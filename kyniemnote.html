@@ -1,0 +1,1897 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ghi Chú Kỷ Niệm Offline - Pro v3.3 (Stable & Large Media V8.0000)</title>
+    <style>
+      /* ============================================
+           DESIGN TOKENS & CSS VARIABLES
+           ============================================ */
+      :root {
+        --bg-main: #0f0f0f;
+        --bg-sidebar: #1a1a1a;
+        --bg-hover: #2a2a2a;
+        --bg-active: #3a3d41;
+        --bg-glass: rgba(30, 30, 30, 0.7);
+        --text-main: #e0e0e0;
+        --text-muted: #9e9e9e;
+        --accent: #00bfff;
+        --accent-hover: #00a8d8;
+        --border-color: #333;
+        --danger: #ff4757;
+        --success: #26de81;
+        --radius: 12px;
+        --radius-lg: 16px;
+        --shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.2);
+        --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* LIGHT THEME */
+      :root[data-theme="light"] {
+        --bg-main: #f5f3f0;
+        --bg-sidebar: #fff8f3;
+        --bg-hover: #ffe8d6;
+        --bg-active: #ffd9b3;
+        --bg-glass: rgba(255, 248, 243, 0.85);
+        --text-main: #2c2420;
+        --text-muted: #8b7d75;
+        --accent: #ff8c42;
+        --accent-hover: #ff7a1f;
+        --border-color: #ffe0cc;
+        --danger: #e74c3c;
+        --success: #27ae60;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
+        background: linear-gradient(135deg, var(--bg-main) 0%, #1a1a2e 100%);
+        color: var(--text-main);
+        display: flex;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      :root[data-theme="light"] body {
+        background: linear-gradient(135deg, var(--bg-main) 0%, #ffe8d6 100%);
+      }
+
+      /* ========== SIDEBAR (LEFT COLUMN) ========== */
+      #sidebar {
+        width: 290px;
+        background: var(--bg-glass);
+        backdrop-filter: blur(10px);
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+        transition: var(--transition);
+      }
+
+      :root[data-theme="light"] #sidebar {
+        border-right-color: rgba(44, 36, 32, 0.15);
+      }
+
+      .sidebar-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(0, 191, 255, 0.05);
+      }
+
+      .global-search-container {
+        padding: 12px 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .global-search-input {
+        width: 100%;
+        padding: 8px 12px;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: var(--radius);
+        color: var(--text-main);
+        font-size: 13px;
+        outline: none;
+        transition: var(--transition);
+      }
+      .global-search-input:focus {
+        border-color: var(--accent);
+        background: rgba(0, 0, 0, 0.5);
+      }
+
+      .btn-add {
+        width: 100%;
+        padding: 12px 16px;
+        background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+        color: #fff;
+        border: none;
+        border-radius: var(--radius);
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+        box-shadow: 0 4px 12px rgba(0, 191, 255, 0.3);
+      }
+      .btn-add:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 191, 255, 0.4);
+      }
+
+      #folder-list {
+        flex-grow: 1;
+        overflow-y: auto;
+        list-style: none;
+        padding: 8px 0;
+      }
+
+      #folder-list::-webkit-scrollbar {
+        width: 6px;
+      }
+      #folder-list::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 3px;
+      }
+
+      .folder-item {
+        padding: 12px 15px;
+        display: flex;
+        flex-direction: column;
+        cursor: pointer;
+        user-select: none;
+        position: relative;
+        margin: 4px 8px;
+        border-radius: var(--radius);
+        transition: var(--transition);
+      }
+      .folder-item:hover {
+        background-color: var(--bg-hover);
+        transform: translateX(4px);
+      }
+      .folder-item.active {
+        background: linear-gradient(135deg, rgba(0, 191, 255, 0.3), rgba(0, 168, 216, 0.2));
+        border-left: 3px solid var(--accent);
+      }
+
+      .folder-item-row {
+        display: flex;
+        align-items: center;
+        width: 100%;
+      }
+
+      .folder-icon {
+        margin-right: 10px;
+        font-size: 18px;
+      }
+
+      .folder-name {
+        flex-grow: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .folder-tags-preview {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 6px;
+        padding-left: 28px;
+      }
+
+      .mini-tag {
+        font-size: 10px;
+        background: rgba(0, 191, 255, 0.15);
+        color: var(--accent);
+        padding: 1px 6px;
+        border-radius: 8px;
+      }
+
+      .btn-delete-folder {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: 14px;
+        opacity: 0;
+        transition: var(--transition);
+        padding: 4px 8px;
+        border-radius: 4px;
+      }
+      .folder-item:hover .btn-delete-folder {
+        opacity: 1;
+      }
+      .btn-delete-folder:hover {
+        color: var(--danger);
+        background: rgba(255, 71, 87, 0.1);
+      }
+
+      /* BACKUP & RESTORE FOOTER ACTIONS */
+      .backup-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 12px 15px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(0, 0, 0, 0.2);
+      }
+      .btn-backup {
+        flex: 1;
+        padding: 8px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: var(--text-main);
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: var(--transition);
+        text-align: center;
+      }
+      .btn-backup:hover {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+
+      #current-folder-title {
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+      }
+      #current-folder-title:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      /* INLINE RENAME INPUTS */
+      .folder-rename-input, .title-rename-input, .modal-input {
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid var(--accent);
+        color: var(--text-main);
+        font-size: inherit;
+        font-family: inherit;
+        font-weight: inherit;
+        padding: 4px 8px;
+        border-radius: 6px;
+        outline: none;
+        width: 100%;
+      }
+      .modal-input {
+        margin-bottom: 16px;
+        padding: 10px 14px;
+        font-size: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      .modal-input:focus {
+        border-color: var(--accent);
+        background: rgba(0, 0, 0, 0.6);
+      }
+
+      /* ========== MAIN CONTENT (RIGHT COLUMN) ========== */
+      #main-content {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        background: linear-gradient(135deg, rgba(15, 15, 15, 0.8), rgba(26, 26, 46, 0.8));
+        position: relative;
+        overflow: hidden;
+      }
+
+      :root[data-theme="light"] #main-content {
+        background: linear-gradient(135deg, var(--bg-main) 0%, #ffe8d6 100%);
+      }
+
+      .content-header {
+        padding: 18px 24px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: 18px;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        background: var(--bg-glass);
+        backdrop-filter: blur(10px);
+      }
+
+      .header-info-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        flex: 1;
+      }
+
+      .header-stats {
+        display: flex;
+        gap: 15px;
+        align-items: center;
+        font-size: 13px;
+        color: var(--text-muted);
+      }
+
+      .stat-badge {
+        background: rgba(0, 191, 255, 0.15);
+        padding: 4px 12px;
+        border-radius: 20px;
+        border-left: 2px solid var(--accent);
+      }
+
+      /* TAG SYSTEM BAR (PARALLEL LAYERS) */
+      .tag-system-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+        margin-top: 4px;
+      }
+
+      .tag-badge {
+        display: inline-flex;
+        align-items: center;
+        background: rgba(0, 191, 255, 0.15);
+        color: var(--accent);
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        border: 1px solid rgba(0, 191, 255, 0.3);
+      }
+
+      .tag-badge .remove-tag {
+        margin-left: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        opacity: 0.7;
+      }
+      .tag-badge .remove-tag:hover {
+        opacity: 1;
+        color: var(--danger);
+      }
+
+      .tag-input {
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px dashed rgba(255, 255, 255, 0.3);
+        color: var(--text-main);
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        outline: none;
+        width: 110px;
+        transition: var(--transition);
+      }
+      .tag-input:focus {
+        border-color: var(--accent);
+        background: rgba(0, 0, 0, 0.4);
+        width: 140px;
+      }
+
+      .save-status {
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+
+      .btn-theme {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: var(--text-main);
+        font-size: 16px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+      .btn-theme:hover {
+        background: var(--accent);
+        border-color: var(--accent);
+        transform: scale(1.1);
+      }
+
+      #workspace {
+        flex-grow: 1;
+        padding: 24px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+      }
+
+      #workspace::-webkit-scrollbar {
+        width: 8px;
+      }
+      #workspace::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 4px;
+      }
+
+      /* ========== TEXT EDITOR ========== */
+      #text-editor {
+        width: 100%;
+        height: 100%;
+        background: rgba(20, 20, 20, 0.8);
+        backdrop-filter: blur(5px);
+        color: var(--text-main);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: var(--radius);
+        resize: none;
+        font-size: 15px;
+        line-height: 1.7;
+        outline: none;
+        display: none;
+        padding: 20px;
+        transition: var(--transition);
+      }
+      #text-editor:focus {
+        background: rgba(20, 20, 20, 0.9);
+        border-color: rgba(0, 191, 255, 0.3);
+      }
+
+      /* ========== MEDIA WORKSPACE & PAGINATION ========== */
+      #media-workspace {
+        display: none;
+        flex-direction: column;
+        height: 100%;
+      }
+
+      .drop-zone {
+        border: 2px dashed rgba(255, 255, 255, 0.2);
+        border-radius: var(--radius-lg);
+        padding: 25px;
+        text-align: center;
+        color: var(--text-muted);
+        margin-bottom: 16px;
+        transition: var(--transition);
+        background: rgba(255, 255, 255, 0.02);
+        cursor: pointer;
+      }
+      .drop-zone:hover {
+        border-color: var(--accent);
+        background: rgba(0, 191, 255, 0.04);
+        color: var(--text-main);
+      }
+
+      .media-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 16px;
+        padding-bottom: 20px;
+        contain: content;
+      }
+
+      .media-item {
+        position: relative;
+        background: rgba(30, 30, 30, 0.8);
+        border-radius: var(--radius);
+        overflow: hidden;
+        cursor: pointer;
+        box-shadow: var(--shadow-md);
+        aspect-ratio: 1;
+        display: flex;
+        flex-direction: column;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        transition: var(--transition);
+      }
+      .media-item:hover {
+        border-color: var(--accent);
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0, 191, 255, 0.2);
+      }
+
+      .media-thumb {
+        width: 100%;
+        flex-grow: 1;
+        object-fit: cover;
+        background: #000;
+      }
+
+      .media-title {
+        padding: 8px;
+        font-size: 12px;
+        font-weight: 500;
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        background: rgba(0, 0, 0, 0.7);
+      }
+
+      .media-item.video-item::before {
+        content: attr(data-video-name);
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background: rgba(15, 15, 15, 0.95);
+        color: var(--accent);
+        padding: 12px 10px;
+        font-size: 13px;
+        line-height: 1.4;
+        font-weight: 600;
+        text-align: center;
+        opacity: 0;
+        transform: translateY(-20px);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 10;
+        pointer-events: none;
+        word-wrap: break-word;
+        border-bottom: 2px solid var(--accent);
+      }
+      .media-item.video-item:hover::before {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .media-item.video-item:hover .media-thumb {
+        filter: brightness(0.3);
+      }
+
+      /* GLOBAL SEARCH RESULTS VIEW */
+      #search-workspace {
+        display: none;
+        flex-direction: column;
+        height: 100%;
+        overflow-y: auto;
+      }
+      .search-results-section {
+        margin-bottom: 20px;
+      }
+      .search-results-section h3 {
+        font-size: 15px;
+        color: var(--accent);
+        margin-bottom: 10px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        padding-bottom: 6px;
+      }
+      .search-result-card {
+        background: rgba(255, 255, 255, 0.04);
+        padding: 12px 16px;
+        border-radius: var(--radius);
+        margin-bottom: 8px;
+        cursor: pointer;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        transition: var(--transition);
+      }
+      .search-result-card:hover {
+        background: rgba(0, 191, 255, 0.1);
+        border-color: var(--accent);
+      }
+
+      /* Pagination */
+      .pagination-bar {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 0;
+        margin-top: auto;
+      }
+      .btn-page {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: var(--text-main);
+        padding: 6px 14px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
+        transition: var(--transition);
+      }
+      .btn-page:hover:not(:disabled) {
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+      .btn-page:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      #page-info {
+        font-size: 13px;
+        color: var(--text-muted);
+      }
+
+      /* Modals & Viewers */
+      .modal-overlay, .viewer-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(5px);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+      .modal-overlay.active, .viewer-overlay.active {
+        display: flex;
+        opacity: 1;
+      }
+
+      .modal-content {
+        background: var(--bg-glass);
+        backdrop-filter: blur(20px);
+        padding: 32px;
+        border-radius: var(--radius-lg);
+        width: 350px;
+        box-shadow: var(--shadow);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+      }
+      .modal-content h3 {
+        margin-bottom: 16px;
+        text-align: center;
+        font-size: 18px;
+      }
+
+      .type-btn, .btn-cancel {
+        display: block;
+        width: 100%;
+        padding: 12px;
+        margin-bottom: 12px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: var(--text-main);
+        border-radius: var(--radius);
+        cursor: pointer;
+        text-align: left;
+        transition: var(--transition);
+        font-weight: 500;
+      }
+      .type-btn:hover {
+        background: rgba(0, 191, 255, 0.15);
+        border-color: var(--accent);
+      }
+      .btn-cancel {
+        text-align: center;
+        background: transparent;
+        color: var(--text-muted);
+        margin-top: 16px;
+      }
+
+      .viewer-overlay {
+        background: rgba(0, 0, 0, 0.98);
+        z-index: 2000;
+        flex-direction: column;
+      }
+      .viewer-header {
+        position: absolute;
+        top: 0;
+        width: 100%;
+        padding: 20px 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8), transparent);
+        z-index: 2001;
+      }
+      #viewer-title {
+        font-size: 16px;
+        font-weight: 600;
+      }
+      .viewer-actions button {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        font-size: 14px;
+        cursor: pointer;
+        padding: 10px 16px;
+        border-radius: var(--radius);
+        margin-left: 12px;
+        color: var(--text-main);
+      }
+      .btn-delete {
+        background: rgba(255, 71, 87, 0.2) !important;
+        border-color: var(--danger) !important;
+        color: var(--danger) !important;
+      }
+      .btn-close {
+        background: rgba(150, 150, 150, 0.2) !important;
+      }
+
+      .viewer-content-container {
+        max-width: 90%;
+        max-height: 85vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      .viewer-content-container img,
+      .viewer-content-container video {
+        max-width: 100%;
+        max-height: 85vh;
+        border-radius: var(--radius);
+        object-fit: contain;
+      }
+
+      .empty-state {
+        text-align: center;
+        color: var(--text-muted);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+      }
+      .empty-state h2 {
+        margin-bottom: 10px;
+        font-size: 22px;
+        color: var(--text-main);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- SIDEBAR -->
+    <div id="sidebar">
+      <div class="sidebar-header">
+        <button class="btn-add" id="btn-open-create-modal">➕ Tạo Thư mục mới</button>
+      </div>
+      <!-- TẦNG 2: TÌM KIẾM TOÀN CỤC -->
+      <div class="global-search-container">
+        <input type="text" id="global-search-input" class="global-search-input" placeholder="🔍 Tìm kiếm toàn cục xuyên thư mục..." />
+      </div>
+      <ul id="folder-list"></ul>
+      <!-- TẦNG 1 & TẦNG 3: SAO LƯU + NATIVE FILE SYSTEM ENGINE (LƯU THẺ FILEHANDLE VÀO INDEXEDDB) -->
+      <div class="backup-actions">
+        <button class="btn-backup" id="btn-export-backup" title="Xuất toàn bộ database ra file JSON thủ công">💾 Xuất kho</button>
+        <button class="btn-backup" id="btn-import-backup" title="Nhập và khôi phục database từ file JSON thủ công">📂 Nhập kho</button>
+        <button class="btn-backup" id="btn-select-disk-file" style="background: rgba(0, 191, 255, 0.2); border-color: var(--accent); flex: 100%; margin-top: 4px;" title="Chọn file .json trực tiếp trên ổ D/E để liên kết vĩnh viễn">📁 Liên Kết File Đĩa (.json)</button>
+        <div id="disk-status" style="width: 100%; font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 4px; word-break: break-all;">Chưa liên kết file đĩa</div>
+        <input type="file" id="hidden-import-file" accept=".json" style="display: none;" />
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main-content">
+      <div class="content-header">
+        <div class="header-info-group">
+          <span id="current-folder-title" title="Nhấn đúp chuột để đổi tên">Chào mừng! Hãy chọn hoặc tạo thư mục.</span>
+          <!-- TẦNG 3: HỆ THỐNG THẺ (PARALLEL LAYERS & CROSS-CONNECTIONS) -->
+          <div class="tag-system-bar" id="tag-system-bar" style="display: none;">
+            <div id="active-tags-container" style="display: inline-flex; gap: 4px; flex-wrap: wrap;"></div>
+            <input type="text" id="new-tag-input" class="tag-input" placeholder="+ Thêm thẻ..." />
+          </div>
+          <div class="header-stats" id="header-stats" style="display: none;">
+            <span class="stat-badge" id="stat-content">📝 <span id="stat-count">0</span> ký tự</span>
+            <span class="stat-badge" id="stat-time">🕐 Vừa mới</span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: center">
+          <button id="theme-toggle" class="btn-theme" title="Chuyển đổi sáng/tối">🌙</button>
+          <span class="save-status" id="save-status"></span>
+        </div>
+      </div>
+      <div id="workspace">
+        <textarea id="text-editor" placeholder="Bắt đầu gõ nội dung của bạn..."></textarea>
+
+        <div id="media-workspace">
+          <div class="drop-zone" id="drop-zone">
+            <span id="drop-zone-text">📁 Nhấp vào đây hoặc kéo thả file <span id="media-type-label"></span> vào đây</span>
+          </div>
+          <input type="file" id="hidden-file-input" multiple style="display: none" />
+          <div class="media-grid" id="media-grid"></div>
+          <div class="pagination-bar" id="pagination-bar" style="display: none;">
+            <button class="btn-page" id="btn-prev-page">◀ Trước</button>
+            <span id="page-info">Trang 1 / 1</span>
+            <button class="btn-page" id="btn-next-page">Sau ▶</button>
+          </div>
+        </div>
+
+        <!-- SEARCH RESULTS WORKSPACE -->
+        <div id="search-workspace">
+          <div id="search-results-container"></div>
+        </div>
+
+        <div id="empty-state" class="empty-state">
+          <h2>📝 Ứng dụng Ghi Chú Kỷ Niệm (V8.000 Parallel Layers)</h2>
+          <p>Native File Access API • IndexedDB Large Media Storage • Tìm kiếm toàn cục • Thẻ kết nối đa chiều</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODALS -->
+    <div class="modal-overlay" id="create-modal">
+      <div class="modal-content">
+        <h3>📁 Tạo Thư Mục Mới</h3>
+        <input type="text" id="new-folder-name-input" class="modal-input" placeholder="Nhập tên thư mục mới..." />
+        <button class="type-btn" data-type="text"><span class="icon">📄</span> Văn bản</button>
+        <button class="type-btn" data-type="image"><span class="icon">🖼️</span> Hình ảnh</button>
+        <button class="type-btn" data-type="video"><span class="icon">🎬</span> Video</button>
+        <button class="btn-cancel" id="btn-close-create-modal">Hủy bỏ</button>
+      </div>
+    </div>
+
+    <div class="viewer-overlay" id="media-viewer">
+      <div class="viewer-header">
+        <div id="viewer-title">Tên file</div>
+        <div class="viewer-actions">
+          <button class="btn-delete" id="btn-viewer-delete">🗑️ Xóa File</button>
+          <button class="btn-close" id="btn-viewer-close">✕ Đóng (Esc)</button>
+        </div>
+      </div>
+      <div class="viewer-content-container" id="viewer-container"></div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+      // [LAYER: BẢO VỆ CHUỖI V8 ENGINE]
+      const MAX_BASE64_SIZE = 15 * 1024 * 1024; // Giới hạn 15MB để không gây crash JSON
+
+      const DatabaseManager = (() => {
+        const DB_NAME = "NotesOfflineDB";
+        const DB_VERSION = 6;
+        let db = null;
+
+        const init = () => {
+          return new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+            request.onupgradeneeded = (e) => {
+              const tempDb = e.target.result;
+              if (!tempDb.objectStoreNames.contains("folders")) {
+                tempDb.createObjectStore("folders", { keyPath: "id", autoIncrement: true });
+              }
+              if (!tempDb.objectStoreNames.contains("texts")) {
+                tempDb.createObjectStore("texts", { keyPath: "folderId" });
+              }
+              if (!tempDb.objectStoreNames.contains("files")) {
+                const fileStore = tempDb.createObjectStore("files", { keyPath: "id", autoIncrement: true });
+                fileStore.createIndex("folderId", "folderId", { unique: false });
+              }
+              if (!tempDb.objectStoreNames.contains("handles")) {
+                tempDb.createObjectStore("handles", { keyPath: "id" });
+              }
+            };
+            request.onsuccess = (e) => { db = e.target.result; resolve(db); };
+            request.onerror = (e) => reject(e.target.error);
+          });
+        };
+
+        const transaction = (storeNames, mode = "readonly") => db.transaction(storeNames, mode);
+        const query = (storeName, mode = "readonly") => transaction(storeName, mode).objectStore(storeName);
+
+        const saveFileHandle = async (handle) => {
+          return new Promise((resolve, reject) => {
+            const req = query("handles", "readwrite").put({ id: "main_file_handle", handle });
+            req.onsuccess = () => resolve();
+            req.onerror = (e) => reject(e);
+          });
+        };
+
+        const getFileHandle = async () => {
+          return new Promise((resolve, reject) => {
+            const req = query("handles", "readonly").get("main_file_handle");
+            req.onsuccess = (e) => resolve(e.target.result?.handle || null);
+            req.onerror = (e) => reject(e);
+          });
+        };
+
+        return { init, transaction, query, saveFileHandle, getFileHandle };
+      })();
+
+      const FolderManager = (() => {
+        const create = async (type, customName = "") => {
+          const titles = { text: "Thư mục văn bản", image: "Album Ảnh", video: "Bộ sưu tập Video" };
+          const finalName = customName.trim() ? customName.trim() : `${titles[type]} mới`;
+          const folder = { name: finalName, type, timestamp: Date.now(), tags: [] };
+          return new Promise((resolve, reject) => {
+            const req = DatabaseManager.query("folders", "readwrite").add(folder);
+            req.onsuccess = (e) => {
+              DiskFileSystemManager.saveToDisk();
+              resolve(e.target.result);
+            };
+            req.onerror = (e) => reject(e);
+          });
+        };
+
+        const getAll = async () => {
+          return new Promise((resolve, reject) => {
+            const req = DatabaseManager.query("folders", "readonly").getAll();
+            req.onsuccess = (e) => resolve(e.target.result);
+            req.onerror = (e) => reject(e);
+          });
+        };
+
+        const getById = async (folderId) => {
+          return new Promise((resolve, reject) => {
+            const req = DatabaseManager.query("folders", "readonly").get(folderId);
+            req.onsuccess = (e) => resolve(e.target.result);
+            req.onerror = (e) => reject(e);
+          });
+        };
+
+        const update = async (folder) => {
+          return new Promise((resolve, reject) => {
+            const req = DatabaseManager.query("folders", "readwrite").put(folder);
+            req.onsuccess = (e) => {
+              DiskFileSystemManager.saveToDisk();
+              resolve(e.target.result);
+            };
+            req.onerror = (e) => reject(e);
+          });
+        };
+
+        const delete_ = async (folderId) => {
+          return new Promise((resolve, reject) => {
+            const tx = DatabaseManager.transaction(["folders", "texts", "files"], "readwrite");
+            tx.objectStore("folders").delete(folderId);
+            tx.objectStore("texts").delete(folderId);
+            const fileStore = tx.objectStore("files");
+            const index = fileStore.index("folderId");
+            const getAllReq = index.getAllKeys(folderId);
+            getAllReq.onsuccess = () => { getAllReq.result.forEach((id) => fileStore.delete(id)); };
+            tx.oncomplete = () => {
+              DiskFileSystemManager.saveToDisk();
+              resolve();
+            };
+            tx.onerror = (e) => reject(e);
+          });
+        };
+
+        return { create, getAll, getById, update, delete: delete_ };
+      })();
+
+      const TextManager = (() => {
+        let saveTimeout = null;
+        const get = async (folderId) => {
+          return new Promise((resolve, reject) => {
+            const req = DatabaseManager.query("texts", "readonly").get(folderId);
+            req.onsuccess = (e) => resolve(e.target.result?.content || "");
+            req.onerror = (e) => reject(e);
+          });
+        };
+
+        const save = async (folderId, content) => {
+          return new Promise((resolve, reject) => {
+            const req = DatabaseManager.query("texts", "readwrite").put({ folderId, content, lastSaved: Date.now() });
+            req.onsuccess = () => {
+              DiskFileSystemManager.saveToDisk();
+              resolve();
+            };
+            req.onerror = (e) => reject(e);
+          });
+        };
+
+        const autoSave = (folderId, content, onStatusChange) => {
+          clearTimeout(saveTimeout);
+          onStatusChange("💾 Đang lưu...");
+          saveTimeout = setTimeout(async () => {
+            try {
+              await save(folderId, content);
+              onStatusChange("✅ Đã lưu lúc " + new Date().toLocaleTimeString("vi-VN"));
+              setTimeout(() => onStatusChange(""), 3000);
+            } catch (err) {
+              onStatusChange("❌ Lỗi lưu dữ liệu");
+            }
+          }, 1000);
+        };
+
+        return { get, save, autoSave };
+      })();
+
+      const MediaManager = (() => {
+        let objectURLCache = [];
+
+        const add = async (folderId, file) => {
+          return new Promise((resolve, reject) => {
+            const req = DatabaseManager.query("files", "readwrite").add({
+              folderId, name: file.name, type: file.type, blob: file, timestamp: Date.now()
+            });
+            req.onsuccess = (e) => {
+              DiskFileSystemManager.saveToDisk();
+              resolve(e.target.result);
+            };
+            req.onerror = (e) => reject(e);
+          });
+        };
+
+        const getByFolder = async (folderId) => {
+          return new Promise((resolve, reject) => {
+            const store = DatabaseManager.query("files", "readonly");
+            const req = store.index("folderId").getAll(folderId);
+            req.onsuccess = (e) => resolve(e.target.result.sort((a, b) => b.timestamp - a.timestamp));
+            req.onerror = (e) => reject(e);
+          });
+        };
+
+        const delete_ = async (fileId) => {
+          return new Promise((resolve, reject) => {
+            const req = DatabaseManager.query("files", "readwrite").delete(fileId);
+            req.onsuccess = () => {
+              DiskFileSystemManager.saveToDisk();
+              resolve();
+            };
+            req.onerror = (e) => reject(e);
+          });
+        };
+
+        const createObjectURL = (blob) => {
+          const url = URL.createObjectURL(blob);
+          objectURLCache.push(url);
+          return url;
+        };
+
+        const revokeObjectURLs = () => {
+          objectURLCache.forEach((url) => URL.revokeObjectURL(url));
+          objectURLCache.length = 0;
+        };
+
+        return { add, getByFolder, delete: delete_, createObjectURL, revokeObjectURLs };
+      })();
+
+      /* TẦNG 1: BACKUP & RESTORE MANAGER (ĐÃ TÍCH HỢP TỐI ƯU VIDEO NẶNG) */
+      const BackupManager = (() => {
+        const generateFullBackupPayload = async () => {
+          const folders = await FolderManager.getAll();
+          const texts = [];
+          const files = [];
+
+          for (const f of folders) {
+            const textContent = await TextManager.get(f.id);
+            if (textContent) texts.push({ folderId: f.id, content: textContent });
+            const folderFiles = await MediaManager.getByFolder(f.id);
+            for (const fileRec of folderFiles) {
+              // [LAYER: CHỈ MÃ HÓA NẾU FILE DƯỚI 15MB]
+              let base64 = null;
+              if (fileRec.blob && fileRec.blob.size <= MAX_BASE64_SIZE) {
+                base64 = await blobToBase64(fileRec.blob);
+              }
+              files.push({
+                id: fileRec.id, // Lưu kèm ID để nhận diện
+                folderId: fileRec.folderId,
+                name: fileRec.name,
+                type: fileRec.type,
+                timestamp: fileRec.timestamp,
+                data: base64
+              });
+            }
+          }
+          return { version: 1, timestamp: Date.now(), folders, texts, files };
+        };
+
+        const restoreData = async (data) => {
+          if (!data.folders || !data.files) throw new Error("File backup không hợp lệ!");
+
+          // [LAYER: TRUY XUẤT LẠI BLOB CŨ ĐỂ CỨU DỮ LIỆU NẶNG TỪ INDEXEDDB]
+          const existingFilesMap = new Map();
+          const allExistingFiles = await new Promise((res, rej) => {
+            const req = DatabaseManager.query("files", "readonly").getAll();
+            req.onsuccess = (e) => res(e.target.result || []);
+            req.onerror = (e) => rej(e.target.error);
+          });
+          allExistingFiles.forEach(f => existingFilesMap.set(f.id, f.blob));
+
+          const preparedFiles = [];
+          for (const f of data.files) {
+            let blob = null;
+            if (f.data) {
+              blob = await fetch(f.data).then(res => res.blob());
+            } else if (f.id && existingFilesMap.has(f.id)) {
+              // Phục hồi nguyên bản Video Nặng từ database cục bộ
+              blob = existingFilesMap.get(f.id);
+            } else {
+              // Phân nhánh an toàn tuyệt đối nếu file JSON được đem sang máy khác
+              blob = new Blob(["File kích thước lớn không được sao lưu trong JSON"], {type: f.type});
+            }
+
+            if (blob) {
+              preparedFiles.push({
+                id: f.id, // Bảo lưu ID
+                folderId: f.folderId, name: f.name, type: f.type, blob: blob, timestamp: f.timestamp
+              });
+            }
+          }
+
+          const tx = DatabaseManager.transaction(["folders", "texts", "files"], "readwrite");
+          tx.objectStore("folders").clear();
+          tx.objectStore("texts").clear();
+          tx.objectStore("files").clear();
+
+          const folderStore = tx.objectStore("folders");
+          data.folders.forEach(f => folderStore.put(f));
+
+          const textStore = tx.objectStore("texts");
+          if (data.texts) data.texts.forEach(t => textStore.put(t));
+
+          const fileStore = tx.objectStore("files");
+          // Dùng put() thay vì add() để Database chấp nhận lưu lại theo ID gốc
+          preparedFiles.forEach(f => fileStore.put(f));
+
+          return new Promise((resolve, reject) => {
+            tx.oncomplete = async () => {
+              await UIManager.renderFolderList();
+              UIManager.resetWorkspace();
+              resolve();
+            };
+            tx.onerror = (e) => reject(e.target.error);
+          });
+        };
+
+        const exportBackup = async () => {
+          try {
+            const backupData = await generateFullBackupPayload();
+            const blob = new Blob([JSON.stringify(backupData)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `notes_backup_${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+          } catch (err) {
+            alert("Lỗi xuất backup: " + err.message);
+          }
+        };
+
+        const importBackup = async (file) => {
+          try {
+            const text = await file.text();
+            const data = JSON.parse(text);
+            await restoreData(data);
+            alert("Khôi phục dữ liệu thành công!");
+          } catch (err) {
+            alert("Lỗi nhập backup: " + err.message);
+          }
+        };
+
+        const blobToBase64 = (blob) => {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        };
+
+        return { exportBackup, importBackup, generateFullBackupPayload, restoreData };
+      })();
+
+      /* TẦNG 3: NATIVE FILE SYSTEM ACCESS API ENGINE (TRỰC TIẾP TRÊN Ổ D/E - KHÔNG CẦN SERVER) */
+      const DiskFileSystemManager = (() => {
+        let saveTimeout = null;
+        let cachedHandle = null;
+
+        const updateStatusUI = (text) => {
+          const el = document.getElementById("disk-status");
+          if (el) el.textContent = text;
+        };
+
+        const verifyPermission = async (fileHandle, readWrite) => {
+          const options = {};
+          if (readWrite) options.mode = "readwrite";
+          if ((await fileHandle.queryPermission(options)) === "granted") return true;
+          if ((await fileHandle.requestPermission(options)) === "granted") return true;
+          return false;
+        };
+
+        // CHỌN FILE LẦN ĐẦU TIÊN TỪ Ổ ĐĨA
+        const selectDiskFile = async () => {
+          if (!window.showOpenFilePicker) {
+            alert("Trình duyệt của bạn không hỗ trợ File System Access API. Hãy sử dụng Chrome hoặc Edge.");
+            return;
+          }
+          try {
+            const [fileHandle] = await window.showOpenFilePicker({
+              types: [{
+                description: 'JSON Database File',
+                accept: { 'application/json': ['.json'] }
+              }],
+              multiple: false
+            });
+
+            if (fileHandle) {
+              cachedHandle = fileHandle;
+              await DatabaseManager.saveFileHandle(fileHandle);
+              const file = await fileHandle.getFile();
+              const text = await file.text();
+              if (text.trim()) {
+                const data = JSON.parse(text);
+                await BackupManager.restoreData(data);
+              }
+              updateStatusUI(`✅ Đã chọn file: ${fileHandle.name}`);
+              console.log("Đã lưu thẻ cấp quyền file thành công vào IndexedDB:", fileHandle.name);
+            }
+          } catch (err) {
+            if (err.name !== "AbortError") {
+              console.error("Lỗi chọn file đĩa:", err);
+              alert("Lỗi kết nối file đĩa: " + err.message);
+            }
+          }
+        };
+
+        // TỰ ĐỘNG NẠP DỮ LIỆU TỪ THẺ FILEHANDLE TRONG INDEXEDDB KHI KHỞI ĐỘNG
+        const autoLoadFromDisk = async () => {
+          try {
+            cachedHandle = await DatabaseManager.getFileHandle();
+            if (!cachedHandle) {
+              updateStatusUI(`📁 Bấm chọn file .json để liên kết`);
+              return;
+            }
+
+            const hasPermission = await verifyPermission(cachedHandle, false);
+            if (hasPermission) {
+              const file = await cachedHandle.getFile();
+              const text = await file.text();
+              if (text.trim()) {
+                const data = JSON.parse(text);
+                await BackupManager.restoreData(data);
+                updateStatusUI(`✅ Đã nạp từ file: ${cachedHandle.name}`);
+              }
+            } else {
+              updateStatusUI(`⚠️ Cần bấm vào nút liên kết để cấp quyền lại`);
+            }
+          } catch (err) {
+            console.error("Lỗi tự động nạp file từ thẻ IndexedDB:", err);
+            updateStatusUI(`⚠️ File bị đổi tên hoặc di chuyển`);
+          }
+        };
+
+        // TỰ ĐỘNG GHI ĐÈ TRỰC TIẾP VÀO FILE TRÊN Ổ D/E
+        const saveToDisk = (immediate = false) => {
+          clearTimeout(saveTimeout);
+
+          const executeSave = async () => {
+            try {
+              if (!cachedHandle) cachedHandle = await DatabaseManager.getFileHandle();
+              if (!cachedHandle) return;
+
+              const hasPermission = await verifyPermission(cachedHandle, true);
+              if (!hasPermission) {
+                updateStatusUI(`⚠️ Chưa được cấp quyền ghi file`);
+                return;
+              }
+
+              const payload = await BackupManager.generateFullBackupPayload();
+              const writable = await cachedHandle.createWritable();
+              await writable.write(JSON.stringify(payload, null, 2));
+              await writable.close();
+
+              updateStatusUI(`✅ Đã tự động lưu đĩa (${new Date().toLocaleTimeString('vi-VN')})`);
+            } catch (err) {
+              console.error("Lỗi tự động ghi file đĩa cứng:", err);
+              updateStatusUI(`❌ Lỗi lưu đĩa: ${err.message}`);
+            }
+          };
+
+          if (immediate) {
+            executeSave();
+          } else {
+            saveTimeout = setTimeout(executeSave, 600);
+          }
+        };
+
+        return { selectDiskFile, autoLoadFromDisk, saveToDisk };
+      })();
+
+      /* TẦNG 2: GLOBAL SEARCH MANAGER */
+      const SearchManager = (() => {
+        const searchAll = async (queryText) => {
+          if (!queryText.trim()) return { folders: [], texts: [], files: [] };
+          const q = queryText.toLowerCase();
+          const folders = await FolderManager.getAll();
+          const matchedFolders = folders.filter(f => f.name.toLowerCase().includes(q) || (f.tags && f.tags.some(t => t.toLowerCase().includes(q))));
+          
+          const matchedTexts = [];
+          const matchedFiles = [];
+
+          for (const f of folders) {
+            const textContent = await TextManager.get(f.id);
+            if (textContent && textContent.toLowerCase().includes(q)) {
+              matchedTexts.push({ folderId: f.id, folderName: f.name, snippet: textContent.slice(0, 100) });
+            }
+            const files = await MediaManager.getByFolder(f.id);
+            files.forEach(file => {
+              if (file.name.toLowerCase().includes(q)) {
+                matchedFiles.push({ ...file, folderName: f.name });
+              }
+            });
+          }
+          return { folders: matchedFolders, texts: matchedTexts, files: matchedFiles };
+        };
+        return { searchAll };
+      })();
+
+      const UIManager = (() => {
+        let state = {
+          activeFolderId: null,
+          activeFolderType: null,
+          currentViewedFileId: null,
+          currentPage: 1,
+          itemsPerPage: 40,
+          cachedFiles: [],
+          isSearching: false
+        };
+
+        let mediaObserver = new IntersectionObserver((entries, observer) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              const el = entry.target;
+              const realSrc = el.getAttribute('data-src');
+              if (realSrc) { 
+                el.src = realSrc; 
+                el.removeAttribute('data-src'); 
+                if (el.tagName === 'VIDEO') {
+                  el.load(); 
+                }
+              }
+              observer.unobserve(el);
+            }
+          });
+        }, { root: document.getElementById('workspace'), rootMargin: '200px 0px' });
+
+        const elements = {
+          folderList: document.getElementById("folder-list"),
+          textEditor: document.getElementById("text-editor"),
+          mediaWorkspace: document.getElementById("media-workspace"),
+          mediaGrid: document.getElementById("media-grid"),
+          emptyState: document.getElementById("empty-state"),
+          titleEl: document.getElementById("current-folder-title"),
+          statusEl: document.getElementById("save-status"),
+          dropZone: document.getElementById("drop-zone"),
+          hiddenFileInput: document.getElementById("hidden-file-input"),
+          createModal: document.getElementById("create-modal"),
+          newFolderNameInput: document.getElementById("new-folder-name-input"),
+          mediaViewer: document.getElementById("media-viewer"),
+          viewerContainer: document.getElementById("viewer-container"),
+          viewerTitle: document.getElementById("viewer-title"),
+          mediaTypeLabel: document.getElementById("media-type-label"),
+          paginationBar: document.getElementById("pagination-bar"),
+          pageInfo: document.getElementById("page-info"),
+          prevPageBtn: document.getElementById("btn-prev-page"),
+          nextPageBtn: document.getElementById("btn-next-page"),
+          globalSearchInput: document.getElementById("global-search-input"),
+          searchWorkspace: document.getElementById("search-workspace"),
+          searchResultsContainer: document.getElementById("search-results-container"),
+          tagSystemBar: document.getElementById("tag-system-bar"),
+          activeTagsContainer: document.getElementById("active-tags-container"),
+          newTagInput: document.getElementById("new-tag-input"),
+        };
+
+        const renderFolderList = async () => {
+          const folders = await FolderManager.getAll();
+          elements.folderList.innerHTML = "";
+          folders.sort((a, b) => b.timestamp - a.timestamp).forEach((folder) => {
+            const li = document.createElement("li");
+            li.className = `folder-item ${folder.id === state.activeFolderId && !state.isSearching ? "active" : ""}`;
+            
+            let tagsHTML = "";
+            if (folder.tags && folder.tags.length > 0) {
+              tagsHTML = `<div class="folder-tags-preview">${folder.tags.map(t => `<span class="mini-tag">#${escapeHTML(t)}</span>`).join("")}</div>`;
+            }
+
+            li.innerHTML = `
+              <div class="folder-item-row">
+                <span class="folder-icon">${folder.type === 'text' ? '📄' : folder.type === 'image' ? '🖼️' : '🎬'}</span>
+                <span class="folder-name" title="Nhấn đúp chuột để đổi tên">${escapeHTML(folder.name)}</span>
+                <button class="btn-delete-folder" title="Xóa thư mục">🗑️</button>
+              </div>
+              ${tagsHTML}
+            `;
+            
+            li.onclick = (e) => { 
+              if (e.target.tagName !== "BUTTON" && !e.target.classList.contains("mini-tag") && !e.target.classList.contains("folder-rename-input")) {
+                selectFolder(folder.id, folder.type, folder.name); 
+              }
+            };
+
+            const folderNameSpan = li.querySelector(".folder-name");
+            folderNameSpan.ondblclick = (e) => {
+              e.stopPropagation();
+              startInlineRenameFolder(folder.id, folderNameSpan);
+            };
+
+            li.querySelector(".btn-delete-folder").onclick = (e) => { e.stopPropagation(); deleteFolderConfirm(folder.id, folder.name); };
+            elements.folderList.appendChild(li);
+          });
+        };
+
+        const startInlineRenameFolder = async (folderId, el) => {
+          const folder = await FolderManager.getById(folderId);
+          if (!folder) return;
+          const currentName = folder.name;
+          const input = document.createElement("input");
+          input.type = "text";
+          input.className = "folder-rename-input";
+          input.value = currentName;
+
+          el.innerHTML = "";
+          el.appendChild(input);
+          input.focus();
+          input.select();
+
+          let saved = false;
+          const saveRename = async () => {
+            if (saved) return;
+            saved = true;
+            const newName = input.value.trim() || currentName;
+            folder.name = newName;
+            await FolderManager.update(folder);
+
+            if (state.activeFolderId === folderId) {
+              elements.titleEl.textContent = newName;
+              localStorage.setItem('activeFolderName', newName);
+            }
+            renderFolderList();
+          };
+
+          input.onkeydown = (e) => {
+            if (e.key === "Enter") saveRename();
+            if (e.key === "Escape") { saved = true; renderFolderList(); }
+          };
+          input.onblur = saveRename;
+        };
+
+        const startInlineRenameTitle = async (folderId, el) => {
+          const folder = await FolderManager.getById(folderId);
+          if (!folder) return;
+          const currentName = folder.name;
+          const input = document.createElement("input");
+          input.type = "text";
+          input.className = "title-rename-input";
+          input.value = currentName;
+
+          el.innerHTML = "";
+          el.appendChild(input);
+          input.focus();
+          input.select();
+
+          let saved = false;
+          const saveRename = async () => {
+            if (saved) return;
+            saved = true;
+            const newName = input.value.trim() || currentName;
+            folder.name = newName;
+            await FolderManager.update(folder);
+
+            el.textContent = newName;
+            localStorage.setItem('activeFolderName', newName);
+            renderFolderList();
+          };
+
+          input.onkeydown = (e) => {
+            if (e.key === "Enter") saveRename();
+            if (e.key === "Escape") { saved = true; el.textContent = currentName; }
+          };
+          input.onblur = saveRename;
+        };
+
+        const selectFolder = async (id, type, name) => {
+          state.isSearching = false;
+          elements.globalSearchInput.value = "";
+          state.activeFolderId = id;
+          state.activeFolderType = type;
+          state.currentPage = 1;
+          elements.titleEl.textContent = name;
+          elements.statusEl.textContent = "";
+
+          localStorage.setItem('activeFolderId', id);
+          localStorage.setItem('activeFolderType', type);
+          localStorage.setItem('activeFolderName', name);
+
+          document.querySelectorAll(".folder-item").forEach((el) => {
+            el.classList.toggle("active", false);
+          });
+
+          MediaManager.revokeObjectURLs();
+          elements.emptyState.style.display = "none";
+          elements.searchWorkspace.style.display = "none";
+
+          await renderActiveFolderTags(id);
+
+          if (type === "text") {
+            elements.textEditor.style.display = "block";
+            elements.mediaWorkspace.style.display = "none";
+            TextManager.get(id).then(content => {
+              elements.textEditor.value = content;
+              elements.textEditor.focus();
+              updateHeaderStats("text", content);
+            });
+          } else {
+            elements.textEditor.style.display = "none";
+            elements.mediaWorkspace.style.display = "flex";
+            elements.mediaTypeLabel.textContent = type === "image" ? "Hình ảnh" : "Video";
+            elements.hiddenFileInput.accept = type === "image" ? "image/*" : "video/*";
+            loadMediaContent(id);
+          }
+        };
+
+        const renderActiveFolderTags = async (folderId) => {
+          const folder = await FolderManager.getById(folderId);
+          elements.tagSystemBar.style.display = "flex";
+          elements.activeTagsContainer.innerHTML = "";
+          if (folder && folder.tags) {
+            folder.tags.forEach(tag => {
+              const span = document.createElement("span");
+              span.className = "tag-badge";
+              span.innerHTML = `#${escapeHTML(tag)} <span class="remove-tag" title="Xóa thẻ">&times;</span>`;
+              span.querySelector(".remove-tag").onclick = async () => {
+                folder.tags = folder.tags.filter(t => t !== tag);
+                await FolderManager.update(folder);
+                renderActiveFolderTags(folderId);
+                renderFolderList();
+              };
+              elements.activeTagsContainer.appendChild(span);
+            });
+          }
+        };
+
+        const loadMediaContent = async (folderId) => {
+          MediaManager.revokeObjectURLs();
+          state.cachedFiles = await MediaManager.getByFolder(folderId);
+          renderPagedMedia();
+        };
+
+        const renderPagedMedia = () => {
+          elements.mediaGrid.innerHTML = "";
+          const totalFiles = state.cachedFiles.length;
+          updateHeaderStats("media", totalFiles);
+
+          if (totalFiles === 0) {
+            elements.paginationBar.style.display = "none";
+            return;
+          }
+
+          const totalPages = Math.ceil(totalFiles / state.itemsPerPage) || 1;
+          if (state.currentPage > totalPages) state.currentPage = totalPages;
+
+          const start = (state.currentPage - 1) * state.itemsPerPage;
+          const end = start + state.itemsPerPage;
+          const pageItems = state.cachedFiles.slice(start, end);
+
+          const fragment = document.createDocumentFragment();
+          pageItems.forEach((fileRec) => {
+            const div = document.createElement("div");
+            div.className = "media-item";
+            const blobUrl = MediaManager.createObjectURL(fileRec.blob);
+            let thumbHTML = "";
+
+            if (fileRec.type.startsWith("image/")) {
+              thumbHTML = `<img data-src="${blobUrl}" class="media-thumb lazy-media" alt="${escapeHTML(fileRec.name)}">`;
+            } else if (fileRec.type.startsWith("video/")) {
+              thumbHTML = `<video data-src="${blobUrl}#t=1.0" class="media-thumb lazy-media" preload="metadata" muted></video>`;
+              div.classList.add("video-item");
+              div.setAttribute("data-video-name", fileRec.name);
+            }
+
+            div.innerHTML = `${thumbHTML}<div class="media-title">${escapeHTML(fileRec.name)}</div>`;
+            div.onclick = () => openMediaViewer(fileRec, blobUrl);
+
+            const mediaEl = div.querySelector('.lazy-media');
+            if (mediaEl) mediaObserver.observe(mediaEl);
+            fragment.appendChild(div);
+          });
+
+          elements.mediaGrid.appendChild(fragment);
+
+          if (totalFiles > state.itemsPerPage) {
+            elements.paginationBar.style.display = "flex";
+            elements.pageInfo.textContent = `Trang ${state.currentPage} / ${totalPages} (${totalFiles} files)`;
+            elements.prevPageBtn.disabled = state.currentPage === 1;
+            elements.nextPageBtn.disabled = state.currentPage === totalPages;
+          } else {
+            elements.paginationBar.style.display = "none";
+          }
+        };
+
+        const openMediaViewer = (fileRec, blobUrl) => {
+          state.currentViewedFileId = fileRec.id;
+          elements.viewerTitle.textContent = fileRec.name;
+          elements.viewerContainer.innerHTML = fileRec.type.startsWith("image/") 
+            ? `<img src="${blobUrl}">` 
+            : `<video src="${blobUrl}" controls autoplay></video>`;
+          elements.mediaViewer.classList.add("active");
+        };
+
+        const closeMediaViewer = () => {
+          const video = elements.viewerContainer.querySelector("video");
+          if (video) { video.pause(); video.removeAttribute("src"); video.load(); }
+          elements.mediaViewer.classList.remove("active");
+          elements.viewerContainer.innerHTML = "";
+          state.currentViewedFileId = null;
+        };
+
+        const updateHeaderStats = (type, data) => {
+          const statsEl = document.getElementById("header-stats");
+          const contentEl = document.getElementById("stat-content");
+          const timeEl = document.getElementById("stat-time");
+
+          if (type === "text") {
+            contentEl.innerHTML = `📝 <span>${data.length}</span> ký tự`;
+          } else {
+            contentEl.innerHTML = `📸 <span>${data}</span> files`;
+          }
+          timeEl.innerHTML = `🕐 ${new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`;
+          statsEl.style.display = "flex";
+        };
+
+        const deleteFolderConfirm = async (id, name) => {
+          if (!confirm(`Xóa thư mục "${name}" và toàn bộ dữ liệu bên trong?`)) return;
+          await FolderManager.delete(id);
+          if (state.activeFolderId === id) resetWorkspace();
+          renderFolderList();
+        };
+
+        const resetWorkspace = () => {
+          state.activeFolderId = null;
+          state.isSearching = false;
+          localStorage.clear();
+          elements.titleEl.textContent = "Chào mừng! Hãy chọn hoặc tạo thư mục.";
+          elements.textEditor.style.display = "none";
+          elements.mediaWorkspace.style.display = "none";
+          elements.searchWorkspace.style.display = "none";
+          elements.emptyState.style.display = "flex";
+          elements.tagSystemBar.style.display = "none";
+          document.getElementById("header-stats").style.display = "none";
+          MediaManager.revokeObjectURLs();
+        };
+
+        const handleGlobalSearch = async (queryText) => {
+          if (!queryText.trim()) {
+            if (state.activeFolderId) {
+              selectFolder(state.activeFolderId, state.activeFolderType, elements.titleEl.textContent);
+            } else {
+              resetWorkspace();
+            }
+            return;
+          }
+
+          state.isSearching = true;
+          elements.emptyState.style.display = "none";
+          elements.textEditor.style.display = "none";
+          elements.mediaWorkspace.style.display = "none";
+          elements.tagSystemBar.style.display = "none";
+          elements.searchWorkspace.style.display = "flex";
+          document.getElementById("header-stats").style.display = "none";
+          elements.titleEl.textContent = `Kết quả tìm kiếm: "${queryText}"`;
+
+          const results = await SearchManager.searchAll(queryText);
+          let html = "";
+
+          if (results.folders.length > 0) {
+            html += `<div class="search-results-section"><h3>📁 Thư mục phù hợp (${results.folders.length})</h3>`;
+            results.folders.forEach(f => {
+              html += `<div class="search-result-card" data-id="${f.id}" data-type="${f.type}" data-name="${escapeHTML(f.name)}">
+                <strong>${escapeHTML(f.name)}</strong> (${f.type}) ${f.tags ? f.tags.map(t=>`#${t}`).join(' ') : ''}
+              </div>`;
+            });
+            html += `</div>`;
+          }
+
+          if (results.texts.length > 0) {
+            html += `<div class="search-results-section"><h3>📝 Văn bản phù hợp (${results.texts.length})</h3>`;
+            results.texts.forEach(t => {
+              html += `<div class="search-result-card" data-id="${t.folderId}" data-type="text" data-name="${escapeHTML(t.folderName)}">
+                <strong>[${escapeHTML(t.folderName)}]</strong>: "${escapeHTML(t.snippet)}..."
+              </div>`;
+            });
+            html += `</div>`;
+          }
+
+          if (results.files.length > 0) {
+            html += `<div class="search-results-section"><h3>🖼️ File media phù hợp (${results.files.length})</h3>`;
+            results.files.forEach(f => {
+              html += `<div class="search-result-card" data-id="${f.folderId}" data-type="${f.type.startsWith('image')?'image':'video'}" data-name="${escapeHTML(f.folderName)}">
+                <strong>[${escapeHTML(f.folderName)}]</strong> - 📎 ${escapeHTML(f.name)}
+              </div>`;
+            });
+            html += `</div>`;
+          }
+
+          if (!html) {
+            html = `<div class="empty-state"><p>Không tìm thấy kết quả nào phù hợp với từ khóa.</p></div>`;
+          }
+
+          elements.searchResultsContainer.innerHTML = html;
+        };
+
+        elements.searchResultsContainer.onclick = (e) => {
+          const card = e.target.closest(".search-result-card");
+          if (card) {
+            const id = parseInt(card.dataset.id);
+            const type = card.dataset.type;
+            const name = card.dataset.name;
+            selectFolder(id, type, name);
+          }
+        };
+
+        return {
+          renderFolderList, selectFolder, loadMediaContent, renderPagedMedia,
+          openMediaViewer, closeMediaViewer, deleteFolderConfirm, resetWorkspace,
+          handleGlobalSearch, renderActiveFolderTags, startInlineRenameTitle,
+          getState: () => state, elements
+        };
+      })();
+
+      // Event Handlers & Init
+      window.addEventListener("DOMContentLoaded", async () => {
+        // [LAYER: KHỞI TẠO THEME CHUẨN XÁC, KHÔNG BỊ CHẶN BỞI LỖI TRƯỚC ĐÓ]
+        const savedTheme = localStorage.getItem("theme") || "dark";
+        document.documentElement.setAttribute("data-theme", savedTheme);
+        document.getElementById("theme-toggle").textContent = savedTheme === "dark" ? "☀️" : "🌙";
+
+        document.getElementById("theme-toggle").onclick = () => {
+          const current = document.documentElement.getAttribute("data-theme");
+          const next = current === "dark" ? "light" : "dark";
+          document.documentElement.setAttribute("data-theme", next);
+          localStorage.setItem("theme", next);
+          document.getElementById("theme-toggle").textContent = next === "dark" ? "☀️" : "🌙";
+        };
+
+        try {
+          await DatabaseManager.init();
+          await UIManager.renderFolderList();
+
+          // NẠP DỮ LIỆU TỪ THẺ FILE (FILEHANDLE) TRONG INDEXEDDB KHI MỞ TRÌNH DUYỆT
+          await DiskFileSystemManager.autoLoadFromDisk();
+
+          UIManager.elements.titleEl.ondblclick = () => {
+            const state = UIManager.getState();
+            if (state.activeFolderId && !state.isSearching) {
+              UIManager.startInlineRenameTitle(state.activeFolderId, UIManager.elements.titleEl);
+            }
+          };
+
+          // Nút liên kết file đĩa cứng
+          document.getElementById("btn-select-disk-file").onclick = () => DiskFileSystemManager.selectDiskFile();
+
+          document.getElementById("btn-export-backup").onclick = () => BackupManager.exportBackup();
+          document.getElementById("btn-import-backup").onclick = () => document.getElementById("hidden-import-file").click();
+          document.getElementById("hidden-import-file").onchange = (e) => {
+            if (e.target.files.length > 0) {
+              if (confirm("Thao tác này sẽ ghi đè toàn bộ dữ liệu hiện tại bằng dữ liệu từ file backup. Bạn có chắc chắn?")) {
+                BackupManager.importBackup(e.target.files[0]);
+              }
+            }
+          };
+
+          let searchTimeout = null;
+          UIManager.elements.globalSearchInput.oninput = (e) => {
+            clearTimeout(searchTimeout);
+            const val = e.target.value;
+            searchTimeout = setTimeout(() => UIManager.handleGlobalSearch(val), 300);
+          };
+
+          UIManager.elements.newTagInput.onkeydown = async (e) => {
+            if (e.key === "Enter" && e.target.value.trim()) {
+              const tagVal = e.target.value.trim().replace(/^#/, "");
+              e.target.value = "";
+              const state = UIManager.getState();
+              if (state.activeFolderId) {
+                const folder = await FolderManager.getById(state.activeFolderId);
+                if (folder) {
+                  if (!folder.tags) folder.tags = [];
+                  if (!folder.tags.includes(tagVal)) {
+                    folder.tags.push(tagVal);
+                    await FolderManager.update(folder);
+                    await UIManager.renderActiveFolderTags(state.activeFolderId);
+                    await UIManager.renderFolderList();
+                  }
+                }
+              }
+            }
+          };
+
+          document.getElementById("btn-prev-page").onclick = () => {
+            const state = UIManager.getState();
+            if (state.currentPage > 1) {
+              state.currentPage--;
+              UIManager.renderPagedMedia();
+              document.getElementById("workspace").scrollTo(0, 0);
+            }
+          };
+
+          document.getElementById("btn-next-page").onclick = () => {
+            const state = UIManager.getState();
+            const totalPages = Math.ceil(state.cachedFiles.length / state.itemsPerPage);
+            if (state.currentPage < totalPages) {
+              state.currentPage++;
+              UIManager.renderPagedMedia();
+              document.getElementById("workspace").scrollTo(0, 0);
+            }
+          };
+
+          const lastId = localStorage.getItem('activeFolderId');
+          const lastType = localStorage.getItem('activeFolderType');
+          const lastName = localStorage.getItem('activeFolderName');
+          if (lastId && lastType && lastName) {
+            UIManager.selectFolder(parseInt(lastId), lastType, lastName);
+          }
+
+          document.getElementById("btn-open-create-modal").onclick = () => {
+            UIManager.elements.newFolderNameInput.value = "";
+            UIManager.elements.createModal.classList.add("active");
+            UIManager.elements.newFolderNameInput.focus();
+          };
+          document.getElementById("btn-close-create-modal").onclick = () => UIManager.elements.createModal.classList.remove("active");
+
+          document.querySelectorAll(".type-btn").forEach(btn => {
+            btn.onclick = async () => {
+              const type = btn.dataset.type;
+              const customName = UIManager.elements.newFolderNameInput.value;
+              const newId = await FolderManager.create(type, customName);
+              UIManager.elements.createModal.classList.remove("active");
+              await UIManager.renderFolderList();
+              const createdFolder = await FolderManager.getById(newId);
+              UIManager.selectFolder(newId, type, createdFolder.name);
+            };
+          });
+
+          // [LAYER: ĐÃ KHÔI PHỤC LẠI HÀM LƯU GỐC, KHÔNG CÒN LỖI SYNTAX ĐỂ GIỮ MỌI THỨ CHẠY MƯỢT]
+          UIManager.elements.textEditor.oninput = (e) => {
+            const state = UIManager.getState();
+            if (!state.activeFolderId) return;
+            TextManager.autoSave(state.activeFolderId, e.target.value, (msg) => { UIManager.elements.statusEl.textContent = msg; });
+          };
+
+          const dropZone = UIManager.elements.dropZone;
+          const hiddenFileInput = UIManager.elements.hiddenFileInput;
+
+          dropZone.onclick = () => {
+            if (!UIManager.getState().activeFolderId) return;
+            hiddenFileInput.click();
+          };
+
+          hiddenFileInput.onchange = async (e) => {
+            if (e.target.files.length > 0) await handleUpload(e.target.files);
+          };
+
+          ["dragenter", "dragover", "dragleave", "drop"].forEach(evt => {
+            document.addEventListener(evt, (e) => e.preventDefault(), false);
+          });
+
+          dropZone.ondragover = () => dropZone.classList.add("dragover");
+          dropZone.ondragleave = () => dropZone.classList.remove("dragover");
+          dropZone.ondrop = async (e) => {
+            dropZone.classList.remove("dragover");
+            if (e.dataTransfer.files.length > 0) await handleUpload(e.dataTransfer.files);
+          };
+
+          async function handleUpload(files) {
+            const state = UIManager.getState();
+            let added = 0;
+            for (let file of files) {
+              if (state.activeFolderType === "image" && !file.type.startsWith("image/")) continue;
+              if (state.activeFolderType === "video" && !file.type.startsWith("video/")) continue;
+              await MediaManager.add(state.activeFolderId, file);
+              added++;
+            }
+            if (added > 0) {
+              UIManager.elements.statusEl.textContent = `✨ Đã thêm ${added} file thành công!`;
+              await UIManager.loadMediaContent(state.activeFolderId);
+              setTimeout(() => UIManager.elements.statusEl.textContent = "", 3000);
+            }
+          }
+
+          document.getElementById("btn-viewer-close").onclick = UIManager.closeMediaViewer;
+          document.getElementById("btn-viewer-delete").onclick = async () => {
+            const state = UIManager.getState();
+            if (state.currentViewedFileId && confirm("Xóa file này?")) {
+              await MediaManager.delete(state.currentViewedFileId);
+              UIManager.closeMediaViewer();
+              await UIManager.loadMediaContent(state.activeFolderId);
+            }
+          };
+
+          document.onkeydown = (e) => {
+            if (e.key === "Escape") {
+              UIManager.closeMediaViewer();
+              UIManager.elements.createModal.classList.remove("active");
+            }
+          };
+
+        } catch (err) {
+          console.error("Initialization error:", err);
+          alert("Lỗi khởi tạo ứng dụng: " + err.message);
+        }
+      });
+
+      const escapeHTML = (str) => {
+        const div = document.createElement("div");
+        div.textContent = str;
+        return div.innerHTML;
+      };
+    </script>
+  </body>
+</html>

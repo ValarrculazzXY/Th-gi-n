@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parallel Layers - Vocab Hub (Pro v3.2)</title>
+    <!-- Core Engine Injection via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        cyber: {
+                            950: '#030712',
+                            900: '#0b0f19',
+                            850: '#111827',
+                            800: '#1f2937',
+                            750: '#374151'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Table Input Typography & Kinetic Focus */
+        .table-input {
+            width: 100%;
+            background: transparent;
+            border: 1px solid transparent;
+            color: #f3f4f6;
+            font-size: 0.875rem;
+            outline: none;
+            padding: 0.6rem;
+            border-radius: 0.375rem;
+            resize: none;
+            line-height: 1.5;
+            display: block;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .table-input:focus {
+            background-color: #0b0f19;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+        }
+        .topic-label {
+            word-break: break-word;
+            min-width: 0;
+        }
+        /* Custom Scrollbar Mechanics */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #030712;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6366f1;
+        }
+        [v-cloak] { display: none; }
+    </style>
+</head>
+<body class="bg-cyber-950 text-gray-100 h-screen overflow-hidden flex font-sans antialiased selection:bg-indigo-500/30">
+    <div id="app" class="flex w-full h-full" v-cloak>
+        
+        <!-- SIDEBAR: Parallel Layers Control Center -->
+        <aside class="w-72 bg-cyber-900 border-r border-gray-800/80 flex flex-col flex-shrink-0 shadow-2xl z-20">
+            <div class="p-5 border-b border-gray-800/80 bg-cyber-950/40 backdrop-blur-sm">
+                <div class="flex items-center space-x-3">
+                    <div class="h-2.5 w-2.5 rounded-full bg-indigo-500 animate-pulse"></div>
+                    <h1 class="text-lg font-bold tracking-tight text-white uppercase bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">Vocab Network</h1>
+                </div>
+                <p class="text-xs text-gray-400 mt-1 font-mono tracking-wider">PARALLEL LAYERS ARCHITECTURE</p>
+            </div>
+            
+            <!-- Layers / Topics List -->
+            <div class="flex-1 overflow-y-auto px-3 py-4 space-y-1.5 bg-cyber-900/40">
+                <div v-for="(words, topicName) in vocabData" :key="topicName" 
+                     @click="activeTopic = topicName"
+                     :class="['group relative px-4 py-3 rounded-lg cursor-pointer transition-all duration-200 flex justify-between items-center border border-transparent', 
+                              activeTopic === topicName ? 'bg-gradient-to-r from-indigo-950 to-indigo-900/50 border-indigo-500/30 text-white shadow-lg shadow-indigo-950/40' : 'hover:bg-cyber-800/40 text-gray-400 hover:text-gray-200']">
+                    
+                    <div class="flex items-center space-x-3 truncate w-full pr-10">
+                        <!-- Node Pearl Indicator -->
+                        <div :class="['w-1.5 h-1.5 rounded-full transition-all duration-300', activeTopic === topicName ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.6)] scale-125' : 'bg-gray-600 group-hover:bg-indigo-400']"></div>
+                        
+                        <!-- Topic Label Display -->
+                        <span v-if="editingTopic !== topicName" class="font-medium text-sm truncate block text-left topic-label">
+                            {{ topicName }}
+                        </span>
+                        
+                        <!-- Inline Rename Field -->
+                        <input v-else v-model="tempTopicName" 
+                               @blur="saveTopicRename(topicName)" 
+                               @keyup.enter="saveTopicRename(topicName)"
+                               @click.stop
+                               class="w-full bg-cyber-950 border border-indigo-500 text-white px-2 py-1 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400 font-sans" 
+                               autofocus>
+                    </div>
+                    
+                    <!-- Micro Action Controls via Hover Trigger -->
+                    <div v-if="editingTopic !== topicName" class="absolute right-2 flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-transparent pl-2">
+                        <button @click.stop="startEditTopic(topicName)" title="Đổi tên tầng" class="text-gray-500 hover:text-amber-400 p-1 rounded hover:bg-cyber-800 transition duration-150">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"/></svg>
+                        </button>
+                        <button @click.stop="deleteTopic(topicName)" title="Hủy bỏ tầng" class="text-gray-500 hover:text-red-400 p-1 rounded hover:bg-cyber-800 transition duration-150">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar Footer Activation Node -->
+            <div class="p-4 border-t border-gray-800/80 bg-cyber-950/20 space-y-2">
+                <button @click="setupDiskFile" class="w-full bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 py-2.5 px-4 rounded-lg text-xs font-semibold tracking-wide transition-all duration-200 flex items-center justify-center space-x-2 border border-emerald-800/50 shadow-sm" title="Kết nối tự động ghi trực tiếp xuống File Ổ D/E">
+                    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 5.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/></svg>
+                    <span>{{ diskStatus }}</span>
+                </button>
+                <button @click="addNewTopic" class="w-full bg-cyber-800 hover:bg-indigo-600 text-gray-200 hover:text-white py-2.5 px-4 rounded-lg text-xs font-semibold tracking-wide transition-all duration-200 flex items-center justify-center space-x-2 border border-gray-700/50 hover:border-indigo-500 shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                    <span>Khởi tạo Tầng Mới</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- MAIN HUB: Core Workspace Grid -->
+        <main class="flex-1 flex flex-col h-full bg-cyber-950 relative min-w-0 z-10">
+            <!-- Dynamic Control Header -->
+            <div v-if="activeTopic" class="px-8 py-5 border-b border-gray-800/60 flex justify-between items-center bg-cyber-950/80 backdrop-blur-md z-10 flex-shrink-0">
+                <div>
+                    <h2 class="text-xl font-bold tracking-tight text-white flex items-center space-x-2">
+                        <span>{{ activeTopic }}</span>
+                    </h2>
+                    <p class="text-xs text-indigo-400 font-mono mt-1 min-h-[16px] transition-all duration-300" v-if="saveStatus">{{ saveStatus }}</p>
+                    <p class="text-xs text-gray-500 font-mono mt-1 min-h-[16px]" v-else>Mạng lưới liên kết dữ liệu ổn định.</p>
+                </div>
+                
+                <!-- Action Node Clusters -->
+                <div class="flex items-center gap-3">
+                    <button @click="exportTopic" class="bg-cyber-900 hover:bg-cyber-800 text-gray-300 border border-gray-700 hover:border-gray-600 px-4 py-2 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 shadow-sm">
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+                        <span>Xuất Tệp Dữ Liệu (CSV)</span>
+                    </button>
+                    <button @click="addRow" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-xs font-semibold transition flex items-center space-x-1.5 shadow-md shadow-indigo-950/50">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                        <span>Đính Ngọc Tri Thức</span>
+                    </button>
+                    <button @click="toggleFlashMode" class="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white px-4 py-2 rounded-lg text-xs font-semibold transition flex items-center space-x-1.5 shadow-md shadow-cyan-950/50">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        <span>{{ flashMode ? 'Trở Lại Bảng Lưới' : 'Kích Hoạt Flashcards' }}</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- SYSTEM MODE 1: CYBER FLASHCARD INTERACTIVE SYSTEM -->
+            <div v-if="activeTopic && flashMode" class="flex-1 overflow-auto p-8 max-w-4xl mx-auto w-full flex flex-col justify-center">
+                <div class="mb-6 flex flex-col gap-4">
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs font-mono tracking-wider text-gray-500 uppercase">
+                            Khối Tri Thức: <span class="text-indigo-400 font-bold">{{ flashDeck.length > 0 ? flashIndex + 1 : 0 }}</span> / {{ flashDeck.length }}
+                        </div>
+                        
+                        <!-- Flashcard State Filters -->
+                        <div class="flex items-center gap-2">
+                            <button @click="toggleShuffle" :class="shuffleMode ? 'bg-indigo-950 border-indigo-500 text-indigo-300' : 'bg-cyber-900 border-gray-800 text-gray-400 hover:text-gray-200'" class="px-3 py-1.5 border rounded-md text-xs font-medium transition flex items-center space-x-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.656 48.656 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"/></svg>
+                                <span>{{ shuffleMode ? 'Đang Trộn Xáo' : 'Trộn Phần Tử' }}</span>
+                            </button>
+                            <button @click="toggleReviewUnknownMode" :class="reviewUnknownOnly ? 'bg-amber-950 border-amber-500 text-amber-300' : 'bg-cyber-900 border-gray-800 text-gray-400 hover:text-gray-200'" class="px-3 py-1.5 border rounded-md text-xs font-medium transition flex items-center space-x-1">
+                                <span>{{ reviewUnknownOnly ? 'Chỉ Viên Chưa Nhớ' : 'Toàn Bộ Bản Thể' }}</span>
+                            </button>
+                            <button @click="resetFlashProgress" class="bg-cyber-900 border border-gray-800 text-red-400 hover:bg-red-950/30 hover:border-red-900 px-3 py-1.5 rounded-md text-xs font-medium transition">
+                                Đặt Lại Tiến Độ
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Realtime Statistics Node dashboard -->
+                    <div class="grid grid-cols-3 gap-4 text-xs font-mono">
+                        <div class="bg-cyber-900/40 border border-emerald-500/10 rounded-xl p-3.5 shadow-sm flex items-center justify-between">
+                            <span class="text-gray-400">ĐÃ GHI NHỚ</span>
+                            <span class="text-emerald-400 font-bold text-sm">{{ flashStats.known }}</span>
+                        </div>
+                        <div class="bg-cyber-900/40 border border-amber-500/10 rounded-xl p-3.5 shadow-sm flex items-center justify-between">
+                            <span class="text-gray-400">CẦN ĐÁNH GIÁ LẠI</span>
+                            <span class="text-amber-400 font-bold text-sm">{{ flashStats.unknown }}</span>
+                        </div>
+                        <div class="bg-cyber-900/40 border border-gray-800 rounded-xl p-3.5 shadow-sm flex items-center justify-between">
+                            <span class="text-gray-400">CHẾ ĐỘ TẦNG</span>
+                            <span class="text-indigo-400 font-bold">{{ reviewUnknownOnly ? 'LỌC TRI THỨC' : 'TỔNG QUÁT' }}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Core Card Interactive Panel -->
+                <div class="bg-gradient-to-b from-cyber-900 to-cyber-900/60 rounded-2xl shadow-[0_0_50px_-12px_rgba(99,102,241,0.15)] border border-gray-800/80 overflow-hidden min-h-[420px] flex flex-col justify-between p-8 transition-all duration-300">
+                    <div v-if="flashDeck.length > 0" class="flex-1 flex flex-col justify-between">
+                        <div>
+                            <div class="text-xs font-mono tracking-widest text-indigo-400/70 uppercase mb-2">Văn Bản Gốc (Pearl)</div>
+                            <h3 class="text-3xl font-extrabold text-white tracking-tight leading-tight">{{ flashCard.vocab || 'Rỗng...' }}</h3>
+                        </div>
+
+                        <div class="my-6 border-t border-gray-800/60 pt-6">
+                            <div class="text-xs font-mono tracking-widest text-cyan-400/70 uppercase mb-2">Ý Nghĩa Bản Thể</div>
+                            <p class="text-lg text-gray-200 font-medium min-h-[3rem] transition-all duration-200">
+                                {{ showAnswer ? (flashCard.meaning || 'Chưa thiết lập ý nghĩa.') : 'Nhấn [Lật Thẻ] hoặc phím [Space] để truy xuất đáp án...' }}
+                            </p>
+                        </div>
+
+                        <!-- Secondary Meta Layers (Render on Flip) -->
+                        <div v-if="showAnswer" class="space-y-4 border-t border-gray-800/60 pt-6 bg-cyber-950/20 rounded-xl p-4">
+                            <div>
+                                <span class="text-xs font-mono tracking-wider text-gray-500 uppercase block mb-1">Cách vận hành (Usage)</span>
+                                <p class="text-sm text-gray-300 whitespace-pre-line leading-relaxed font-sans">{{ flashCard.usage || '-' }}</p>
+                            </div>
+                            <div class="grid grid-cols-2 gap-6">
+                                <div>
+                                    <span class="text-xs font-mono tracking-wider text-gray-500 uppercase block mb-1">Biến thể song song</span>
+                                    <p class="text-sm text-gray-300 whitespace-pre-line font-sans">{{ flashCard.variant || '-' }}</p>
+                                </div>
+                                <div>
+                                    <span class="text-xs font-mono tracking-wider text-gray-500 uppercase block mb-1">Dẫn xuất đồng nghĩa</span>
+                                    <p class="text-sm text-gray-300 whitespace-pre-line font-sans">{{ flashCard.synonym || '-' }}</p>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="text-xs font-mono tracking-wider text-gray-500 uppercase block mb-1">Ghi chú mạng lưới</span>
+                                <p class="text-sm text-amber-400/90 whitespace-pre-line font-sans italic">{{ flashCard.note || '-' }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Card Action Nodes -->
+                        <div class="mt-8 pt-4 border-t border-gray-800/40 flex items-center justify-between gap-3 flex-wrap">
+                            <div class="flex gap-2">
+                                <button @click="prevCard" class="bg-cyber-800 hover:bg-cyber-750 text-gray-300 px-4 py-2 rounded-lg text-xs font-medium transition">‹ Cực Trước</button>
+                                <button @click="flipCard" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 rounded-lg text-xs font-semibold shadow-md shadow-indigo-950/40 transition">{{ showAnswer ? 'Ẩn Bản Thể' : 'Lật Lớp Tri Thức' }}</button>
+                                <button @click="nextCard" class="bg-cyber-800 hover:bg-cyber-750 text-gray-300 px-4 py-2 rounded-lg text-xs font-medium transition">Cực Tiếp ›</button>
+                            </div>
+                            
+                            <div v-if="showAnswer" class="flex gap-2 animate-fade-in">
+                                <button @click="markAgain" class="bg-amber-950/80 hover:bg-amber-900 border border-amber-800 text-amber-300 px-4 py-2 rounded-lg text-xs font-medium transition">Chưa Khớp (Chưa Nhớ)</button>
+                                <button @click="markKnown" class="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 px-4 py-2 rounded-lg text-xs font-medium transition">Đã Liên Kết (Nhớ Rồi)</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Missing Pearls Exception State -->
+                    <div v-else class="text-center py-12 flex flex-col items-center justify-center h-full space-y-3">
+                        <svg class="w-10 h-10 text-amber-500/70" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
+                        <p class="text-sm text-amber-400 font-medium">Tầng song song hiện tại đang rỗng hoặc chưa khớp bộ lọc.</p>
+                        <p class="text-xs text-gray-500 max-w-xs">Hãy bổ sung các viên ngọc tri thức mới hoặc chuyển đổi sang cấu hình "Toàn Bộ Bản Thể".</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SYSTEM MODE 2: MULTI-DIMENSIONAL GRAPH TABLE INTERFACE -->
+            <div v-if="activeTopic && !flashMode" class="flex-1 flex flex-col px-8 pb-6 min-h-0">
+                <!-- Data Filter Bar -->
+                <div class="mb-4 flex items-center justify-between gap-4 flex-shrink-0 pt-2">
+                    <div class="relative w-full max-w-xl">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
+                            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.604 10.604z"/></svg>
+                        </span>
+                        <input v-model="searchQuery" type="search" placeholder="Truy vấn từ vựng, ý nghĩa, cách dùng hoặc note liên kết..."
+                            class="w-full bg-cyber-900 border border-gray-800 text-gray-100 placeholder-gray-500 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition duration-150">
+                    </div>
+                    <div class="text-xs font-mono text-gray-500">
+                        Phát hiện: <span class="text-white font-bold">{{ filteredRows.length }}</span> / <span class="text-indigo-400 font-bold">{{ vocabData[activeTopic].length }}</span> Điểm Nút Tri Thức
+                    </div>
+                </div>
+                
+                <!-- Highly Optimized Data Grid Panel -->
+                <div class="bg-cyber-900/60 rounded-xl border border-gray-800/80 overflow-x-auto flex-1 shadow-inner">
+                    <table class="w-full text-left border-collapse table-auto min-w-[1100px]">
+                        <thead>
+                            <tr class="bg-cyber-950/60 text-gray-400 font-mono text-xs uppercase tracking-wider border-b border-gray-800">
+                                <th class="p-3.5 font-semibold w-[13%]">Từ vựng (Node)</th>
+                                <th class="p-3.5 font-semibold w-[18%]">Ý nghĩa lõi</th>
+                                <th class="p-3.5 font-semibold w-[20%]">Cách vận hành (Usage)</th>
+                                <th class="p-3.5 font-semibold w-[15%]">Ghi chú liên kết (Note)</th>
+                                <th class="p-3.5 font-semibold w-[13%]">Biến thể dòng</th>
+                                <th class="p-3.5 font-semibold w-[17%]">Dẫn xuất cùng nghĩa</th>
+                                <th class="p-3.5 font-semibold text-center w-12">Xóa</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-850 bg-transparent">
+                            <tr v-for="row in filteredRows" :key="row" class="hover:bg-cyber-800/20 focus-within:bg-cyber-800/40 transition duration-150">
+                                <td class="p-1.5"><input v-model="row.vocab" @input="triggerAutosave" class="table-input placeholder-gray-700 font-bold text-white tracking-wide" placeholder="..."></td>
+                                <td class="p-1.5"><textarea v-model="row.meaning" @input="triggerAutosave" class="table-input placeholder-gray-700" placeholder="..." rows="2"></textarea></td>
+                                <td class="p-1.5"><textarea v-model="row.usage" @input="triggerAutosave" class="table-input placeholder-gray-700 leading-relaxed text-xs text-gray-300" placeholder="..." rows="2"></textarea></td>
+                                <td class="p-1.5"><textarea v-model="row.note" @input="triggerAutosave" class="table-input placeholder-gray-700 text-xs text-amber-400/90" placeholder="..." rows="2"></textarea></td>
+                                <td class="p-1.5"><textarea v-model="row.variant" @input="triggerAutosave" class="table-input placeholder-gray-700 text-xs" placeholder="..." rows="2"></textarea></td>
+                                <td class="p-1.5"><textarea v-model="row.synonym" @input="triggerAutosave" class="table-input placeholder-gray-700 text-xs" placeholder="..." rows="2"></textarea></td>
+                                <td class="p-1.5 text-center">
+                                    <button @click="deleteRow(row)" class="text-gray-600 hover:text-red-400 p-2 rounded-lg hover:bg-red-950/20 transition duration-150">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-1.5 14.5a2.25 2.25 0 01-2.236 2.016H8.236A2.25 2.25 0 016 22.766L4.5 8.25m19.5 0A2.25 2.25 0 0018.022 6H5.978a2.25 2.25 0 00-2.23 2.25m19.5 0H3m2 0h14M12 3v3.75m0 0h3.75M12 6.75H8.25"/></svg>
+                                    </button>
+                                </td>
+                            </tr>
+                            <!-- Empty State Node Configuration -->
+                            <tr v-if="filteredRows.length === 0">
+                                <td colspan="7" class="p-12 text-center text-gray-500 font-medium italic">
+                                    Chưa có viên ngọc tri thức nào được đính vào lớp mạng này. Hãy khởi tạo điểm nút đầu tiên.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Global Blank State Layout -->
+            <div v-else class="flex-1 flex flex-col items-center justify-center text-gray-500 space-y-2">
+                <svg class="w-12 h-12 text-gray-700" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94-3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"/></svg>
+                <p class="text-sm font-medium">Hệ thống sẵn sàng. Hãy chọn hoặc tạo một Tầng Cấu Trúc ở cột trái để liên kết dữ liệu.</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Application Controller Logic Layer -->
+    <script>
+        const { createApp } = Vue
+
+        // ============================================
+        // INDEXEDDB ENGINE (LƯU THẺ FILEHANDLE TRỰC TIẾP)
+        // ============================================
+        const DatabaseManager = (() => {
+            const DB_NAME = "ParallelLayersVocabDB";
+            const DB_VERSION = 1;
+            let db = null;
+
+            const init = () => {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(DB_NAME, DB_VERSION);
+                    request.onupgradeneeded = (e) => {
+                        const tempDb = e.target.result;
+                        if (!tempDb.objectStoreNames.contains("handles")) {
+                            tempDb.createObjectStore("handles", { keyPath: "id" });
+                        }
+                    };
+                    request.onsuccess = (e) => { db = e.target.result; resolve(db); };
+                    request.onerror = (e) => reject(e.target.error);
+                });
+            };
+
+            const saveFileHandle = async (handle) => {
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction("handles", "readwrite");
+                    const req = tx.objectStore("handles").put({ id: "main_file_handle", handle });
+                    req.onsuccess = () => resolve();
+                    req.onerror = (e) => reject(e);
+                });
+            };
+
+            const getFileHandle = async () => {
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction("handles", "readonly");
+                    const req = tx.objectStore("handles").get("main_file_handle");
+                    req.onsuccess = (e) => resolve(e.target.result?.handle || null);
+                    req.onerror = (e) => reject(e);
+                });
+            };
+
+            return { init, saveFileHandle, getFileHandle };
+        })();
+
+        createApp({
+            data() {
+                return {
+                    vocabData: {},
+                    activeTopic: null,
+                    saveTimeout: null,
+                    saveStatus: '',
+                    editingTopic: null,
+                    tempTopicName: '',
+                    searchQuery: '',
+                    flashMode: false,
+                    flashIndex: 0,
+                    showAnswer: false,
+                    shuffleMode: false,
+                    reviewUnknownOnly: false,
+                    flashOrder: [],
+                    flashProgress: {},
+                    diskFileHandle: null,
+                    diskStatus: '📁 KẾT NỐI FILE Ổ D/E'
+                }
+            },
+            computed: {
+                filteredRows() {
+                    if (!this.activeTopic) return []
+                    const rows = this.vocabData[this.activeTopic] || []
+                    const query = this.searchQuery.trim().toLowerCase()
+                    if (!query) return rows
+                    return rows.filter(row => {
+                        return [row.vocab, row.meaning, row.usage, row.note, row.variant, row.synonym]
+                            .some(value => value && value.toLowerCase().includes(query))
+                    })
+                },
+                activeTopicRows() {
+                    return this.activeTopic ? (this.vocabData[this.activeTopic] || []) : []
+                },
+                flashDeck() {
+                    const rows = this.activeTopicRows
+                    if (rows.length === 0) return []
+                    if (this.flashOrder.length !== rows.length) {
+                        this.buildFlashOrder()
+                    }
+                    const order = this.flashOrder.slice()
+                    let deck = order.map(index => rows[index]).filter(Boolean)
+                    if (this.reviewUnknownOnly) {
+                        const progress = this.flashProgress[this.activeTopic] || {}
+                        deck = deck.filter((row, idx) => progress[order[idx]] !== 'known')
+                    }
+                    return deck
+                },
+                flashCard() {
+                    return this.flashDeck[this.flashIndex] || {}
+                },
+                flashStats() {
+                    const rows = this.activeTopicRows
+                    const progress = this.flashProgress[this.activeTopic] || {}
+                    const known = rows.reduce((count, _, index) => count + (progress[index] === 'known' ? 1 : 0), 0)
+                    return {
+                        known,
+                        unknown: rows.length - known
+                    }
+                }
+            },
+            async mounted() {
+                try {
+                    await DatabaseManager.init();
+                } catch (e) {
+                    console.error("Lỗi khởi tạo IndexedDB:", e);
+                }
+                
+                this.loadData();
+                window.addEventListener('keydown', this.handleKeydown);
+                await this.autoLoadFromDisk();
+            },
+            beforeUnmount() {
+                window.removeEventListener('keydown', this.handleKeydown)
+            },
+            watch: {
+                activeTopic() {
+                    this.flashIndex = 0
+                    this.showAnswer = false
+                    this.searchQuery = ''
+                    this.buildFlashOrder()
+                }
+            },
+            methods: {
+                loadData() {
+                    const localData = localStorage.getItem('vocab_data')
+                    this.vocabData = localData ? JSON.parse(localData) : { "Chủ Đề Mẫu": [] }
+                    
+                    const localProgress = localStorage.getItem('flash_progress')
+                    this.flashProgress = localProgress ? JSON.parse(localProgress) : {}
+
+                    const topics = Object.keys(this.vocabData)
+                    if (topics.length > 0) this.activeTopic = topics[0]
+                },
+                async verifyPermission(fileHandle, readWrite) {
+                    const options = {};
+                    if (readWrite) options.mode = "readwrite";
+                    if ((await fileHandle.queryPermission(options)) === "granted") return true;
+                    if ((await fileHandle.requestPermission(options)) === "granted") return true;
+                    return false;
+                },
+                async setupDiskFile() {
+                    if (!window.showOpenFilePicker && !window.showSaveFilePicker) {
+                        alert("Trình duyệt không hỗ trợ File System Access API. Vui lòng sử dụng Chrome hoặc Edge.");
+                        return;
+                    }
+                    try {
+                        let fileHandle;
+                        if (window.showOpenFilePicker) {
+                            const [handle] = await window.showOpenFilePicker({
+                                types: [{
+                                    description: 'JSON Database File',
+                                    accept: { 'application/json': ['.json'] }
+                                }],
+                                multiple: false
+                            });
+                            fileHandle = handle;
+                        } else {
+                            fileHandle = await window.showSaveFilePicker({
+                                suggestedName: 'vocab_network_database.json',
+                                types: [{
+                                    description: 'JSON Files',
+                                    accept: { 'application/json': ['.json'] }
+                                }]
+                            });
+                        }
+
+                        if (fileHandle) {
+                            this.diskFileHandle = fileHandle;
+                            await DatabaseManager.saveFileHandle(fileHandle);
+                            const file = await fileHandle.getFile();
+                            const content = await file.text();
+
+                            if (content.trim()) {
+                                try {
+                                    const payload = JSON.parse(content);
+                                    if (payload.vocabData) {
+                                        this.vocabData = payload.vocabData;
+                                        this.flashProgress = payload.flashProgress || {};
+                                    } else {
+                                        this.vocabData = payload;
+                                    }
+                                    const topics = Object.keys(this.vocabData);
+                                    if (topics.length > 0) this.activeTopic = topics[0];
+                                } catch (e) {
+                                    console.error("Không thể đọc nội dung JSON:", e);
+                                }
+                            } else {
+                                await this.saveToDisk();
+                            }
+
+                            this.diskStatus = `✅ Đã kết nối: ${fileHandle.name}`;
+                            alert(`Đã kết nối thành công với file "${fileHandle.name}" trên ổ cứng! Mọi thay đổi sẽ tự động ghi đè vĩnh viễn.`);
+                        }
+                    } catch (err) {
+                        if (err.name !== 'AbortError') {
+                            console.error("Lỗi kết nối đĩa cứng:", err);
+                            alert("Lỗi kết nối file: " + err.message);
+                        }
+                    }
+                },
+                async autoLoadFromDisk() {
+                    try {
+                        this.diskFileHandle = await DatabaseManager.getFileHandle();
+                        if (!this.diskFileHandle) {
+                            this.diskStatus = '📁 KẾT NỐI FILE Ổ D/E';
+                            return;
+                        }
+
+                        const hasPermission = await this.verifyPermission(this.diskFileHandle, false);
+                        if (hasPermission) {
+                            const file = await this.diskFileHandle.getFile();
+                            const content = await file.text();
+                            if (content.trim()) {
+                                const payload = JSON.parse(content);
+                                if (payload.vocabData) {
+                                    this.vocabData = payload.vocabData;
+                                    this.flashProgress = payload.flashProgress || {};
+                                } else {
+                                    this.vocabData = payload;
+                                }
+                                const topics = Object.keys(this.vocabData);
+                                if (topics.length > 0) this.activeTopic = topics[0];
+                                this.diskStatus = `✅ Đã nạp từ file: ${this.diskFileHandle.name}`;
+                            }
+                        } else {
+                            this.diskStatus = `⚠️ Bấm kết nối lại: ${this.diskFileHandle.name}`;
+                        }
+                    } catch (err) {
+                        console.error("Lỗi tự động nạp file từ IndexedDB:", err);
+                        this.diskStatus = '⚠️ File bị di chuyển hoặc đổi tên';
+                    }
+                },
+                async saveToDisk() {
+                    try {
+                        if (!this.diskFileHandle) this.diskFileHandle = await DatabaseManager.getFileHandle();
+                        if (!this.diskFileHandle) return;
+
+                        const hasPermission = await this.verifyPermission(this.diskFileHandle, true);
+                        if (!hasPermission) return;
+
+                        const writable = await this.diskFileHandle.createWritable();
+                        const payload = {
+                            vocabData: this.vocabData,
+                            flashProgress: this.flashProgress
+                        };
+                        await writable.write(JSON.stringify(payload, null, 2));
+                        await writable.close();
+                    } catch (err) {
+                        console.error("Lỗi ghi file trực tiếp ổ D/E:", err);
+                    }
+                },
+                triggerAutosave() {
+                    this.saveStatus = 'Đang lưu (Ngọc đang kết dính)...'
+                    clearTimeout(this.saveTimeout)
+                    this.saveTimeout = setTimeout(async () => {
+                        localStorage.setItem('vocab_data', JSON.stringify(this.vocabData))
+                        localStorage.setItem('flash_progress', JSON.stringify(this.flashProgress))
+                        
+                        await this.saveToDisk();
+
+                        this.saveStatus = 'Đã lưu an toàn vào hệ thống cục bộ ✓'
+                        setTimeout(() => this.saveStatus = '', 2000)
+                    }, 500)
+                },
+                addRow() {
+                    this.vocabData[this.activeTopic].push({
+                        vocab: '', meaning: '', usage: '', note: '', variant: '', synonym: ''
+                    })
+                    this.triggerAutosave()
+                    if (this.flashMode) this.buildFlashOrder()
+                },
+                deleteRow(row) {
+                    const index = this.vocabData[this.activeTopic].indexOf(row)
+                    if (index !== -1) {
+                        this.vocabData[this.activeTopic].splice(index, 1)
+                        this.triggerAutosave()
+                        this.buildFlashOrder()
+                    }
+                },
+                addNewTopic() {
+                    const name = prompt("Nhập tên chủ đề mới:")
+                    if (name) {
+                        const trimmedName = name.trim()
+                        if (trimmedName && !this.vocabData[trimmedName]) {
+                            this.vocabData[trimmedName] = []
+                            this.activeTopic = trimmedName
+                            this.triggerAutosave()
+                        } else if (this.vocabData[trimmedName]) {
+                            alert("Chủ đề này đã tồn tại trong hệ thống!")
+                        }
+                    }
+                },
+                deleteTopic(topic) {
+                    if (confirm(`Bạn có chắc muốn xóa chủ đề "${topic}"? Mọi viên ngọc trong đây sẽ vỡ vĩnh viễn.`)) {
+                        delete this.vocabData[topic]
+                        delete this.flashProgress[topic]
+                        if (this.activeTopic === topic) {
+                            const remaining = Object.keys(this.vocabData)
+                            this.activeTopic = remaining.length > 0 ? remaining[0] : null
+                        }
+                        this.triggerAutosave()
+                    }
+                },
+                startEditTopic(topic) {
+                    this.editingTopic = topic
+                    this.tempTopicName = topic
+                },
+                saveTopicRename(oldName) {
+                    const newName = this.tempTopicName.trim()
+                    if (newName && newName !== oldName && !this.vocabData[newName]) {
+                        this.vocabData[newName] = this.vocabData[oldName]
+                        delete this.vocabData[oldName]
+                        
+                        if (this.flashProgress[oldName]) {
+                            this.flashProgress[newName] = this.flashProgress[oldName]
+                            delete this.flashProgress[oldName]
+                        }
+
+                        if (this.activeTopic === oldName) this.activeTopic = newName
+                        this.triggerAutosave()
+                    }
+                    this.editingTopic = null
+                },
+                exportTopic() {
+                    const rows = this.vocabData[this.activeTopic] || []
+                    const headers = ["Từ vựng", "Ý nghĩa", "Cách dùng", "Note", "Biến thể", "Từ cùng nghĩa"]
+                    
+                    let csvContent = "\uFEFF"
+                    csvContent += headers.map(h => `"${h.replace(/"/g, '""')}"`).join(",") + "\n"
+                    
+                    rows.forEach(row => {
+                        const line = [
+                            row.vocab || '',
+                            row.meaning || '',
+                            row.usage || '',
+                            row.note || '',
+                            row.variant || '',
+                            row.synonym || ''
+                        ].map(val => `"${val.replace(/"/g, '""')}"`).join(",")
+                        csvContent += line + "\n"
+                    })
+                    
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+                    const link = document.createElement("a")
+                    link.href = URL.createObjectURL(blob)
+                    link.setAttribute("download", `${this.activeTopic}_vocab.csv`)
+                    document.body.appendChild(link)
+                    link.click()
+                    document.body.removeChild(link)
+                },
+                handleKeydown(event) {
+                    if (!this.flashMode) return
+                    if (event.code === 'Space') {
+                        event.preventDefault()
+                        this.flipCard()
+                    }
+                    if (event.code === 'ArrowRight') {
+                        this.nextCard()
+                    }
+                    if (event.code === 'ArrowLeft') {
+                        this.prevCard()
+                    }
+                },
+                buildFlashOrder() {
+                    const rows = this.activeTopicRows
+                    this.flashOrder = rows.map((_, index) => index)
+                    if (this.shuffleMode) {
+                        for (let i = this.flashOrder.length - 1; i > 0; i--) {
+                            const j = Math.floor(Math.random() * (i + 1))
+                            const temp = this.flashOrder[i]
+                            this.flashOrder[i] = this.flashOrder[j]
+                            this.flashOrder[j] = temp
+                        }
+                    }
+                    this.flashIndex = 0
+                    this.showAnswer = false
+                },
+                toggleFlashMode() {
+                    this.flashMode = !this.flashMode
+                    if (this.flashMode) {
+                        this.buildFlashOrder()
+                    }
+                },
+                toggleShuffle() {
+                    this.shuffleMode = !this.shuffleMode
+                    this.buildFlashOrder()
+                },
+                toggleReviewUnknownMode() {
+                    this.reviewUnknownOnly = !this.reviewUnknownOnly
+                    this.flashIndex = 0
+                    this.showAnswer = false
+                },
+                resetFlashProgress() {
+                    if (!this.activeTopic) return
+                    this.flashProgress[this.activeTopic] = {}
+                    this.buildFlashOrder()
+                    this.triggerAutosave()
+                },
+                nextCard() {
+                    if (this.flashDeck.length === 0) return
+                    this.flashIndex = (this.flashIndex + 1) % this.flashDeck.length
+                    this.showAnswer = false
+                },
+                prevCard() {
+                    if (this.flashDeck.length === 0) return
+                    this.flashIndex = (this.flashIndex - 1 + this.flashDeck.length) % this.flashDeck.length
+                    this.showAnswer = false
+                },
+                flipCard() {
+                    this.showAnswer = !this.showAnswer
+                },
+                markKnown() {
+                    if (!this.activeTopic || this.flashDeck.length === 0) return
+                    if (!this.flashProgress[this.activeTopic]) this.flashProgress[this.activeTopic] = {}
+                    
+                    const currentIndex = this.flashOrder[this.flashIndex]
+                    this.flashProgress[this.activeTopic][currentIndex] = 'known'
+                    this.showAnswer = false
+                    this.triggerAutosave()
+                    
+                    if (this.reviewUnknownOnly) {
+                        if (this.flashIndex >= this.flashDeck.length && this.flashDeck.length > 0) {
+                            this.flashIndex = this.flashDeck.length - 1
+                        }
+                    } else {
+                        this.nextCard()
+                    }
+                },
+                markAgain() {
+                    if (!this.activeTopic || this.flashDeck.length === 0) return
+                    if (!this.flashProgress[this.activeTopic]) this.flashProgress[this.activeTopic] = {}
+                    
+                    const currentIndex = this.flashOrder[this.flashIndex]
+                    this.flashProgress[this.activeTopic][currentIndex] = 'unknown'
+                    this.showAnswer = false
+                    this.triggerAutosave()
+                    this.nextCard()
+                }
+            }
+        }).mount('#app')
+    </script>
+</body>
+</html>

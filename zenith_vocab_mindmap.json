@@ -1,0 +1,31 @@
+{
+  "topics": [
+    {
+      "id": "mtzpbsgibj9kve89xv",
+      "name": "Strategic Business",
+      "groups": [
+        {
+          "id": "mtzpbsgii1ovfm1qxc",
+          "name": "Negotiation",
+          "color": "#3b82f6",
+          "expanded": true,
+          "words": [
+            {
+              "id": "mtzpbsgiulgvoon29ya",
+              "term": "Leverage",
+              "meaning": "Power to influence a person or situation",
+              "notes": "Use when you have an advantage."
+            },
+            {
+              "id": "mtzpbsgis8vo5qq0wqi",
+              "term": "Concession",
+              "meaning": "A thing that is granted in response to demands",
+              "notes": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "activeTopicId": "mtzpbsgibj9kve89xv"
+}

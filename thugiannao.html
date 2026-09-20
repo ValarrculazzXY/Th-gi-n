@@ -1,0 +1,1024 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Media Muxer Pro - Pro v3.3 (Large Video Optimized)</title>
+    <style>
+      /* ============================================
+         DESIGN TOKENS & CSS VARIABLES
+         ============================================ */
+      :root {
+        --bg-main: #0f0f0f;
+        --bg-sidebar: #1a1a1a;
+        --bg-hover: #2a2a2a;
+        --bg-active: #3a3d41;
+        --text-main: #e0e0e0;
+        --text-muted: #9e9e9e;
+        --accent: #ff7a1f; 
+        --accent-hover: #e66a15;
+        --border-color: #333;
+        --danger: #ff4757;
+        --radius: 12px;
+        --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      :root[data-theme="light"] {
+        --bg-main: #f5f3f0;
+        --bg-sidebar: #fff8f3;
+        --bg-hover: #ffe8d6;
+        --bg-active: #ffd9b3;
+        --text-main: #2c2420;
+        --text-muted: #8b7d75;
+        --accent: #ff8c42;
+        --accent-hover: #e67e3a;
+        --border-color: #ffe0cc;
+      }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
+        background: var(--bg-main);
+        color: var(--text-main);
+        display: flex;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      /* ========== SIDEBAR ========== */
+      #sidebar {
+        width: 280px;
+        background: var(--bg-sidebar);
+        border-right: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+        transition: var(--transition);
+      }
+
+      .sidebar-header {
+        padding: 20px;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .btn-add {
+        width: 100%;
+        padding: 12px 16px;
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        border-radius: var(--radius);
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+      }
+      .btn-add:hover { background: var(--accent-hover); transform: translateY(-2px); }
+
+      #folder-list {
+        flex-grow: 1;
+        overflow-y: auto;
+        list-style: none;
+        padding: 8px 0;
+      }
+      #folder-list::-webkit-scrollbar { width: 6px; }
+      #folder-list::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+
+      .folder-item {
+        padding: 12px 15px;
+        display: flex;
+        align-items: center;
+        cursor: grab;
+        user-select: none;
+        margin: 4px 8px;
+        border-radius: var(--radius);
+        transition: background-color 0.2s ease, border-color 0.15s ease, opacity 0.2s ease;
+        border: 2px solid transparent; 
+      }
+      .folder-item:active { cursor: grabbing; }
+      .folder-item:hover { background-color: var(--bg-hover); }
+      .folder-item.active {
+        background: var(--bg-active);
+        border-left: 3px solid var(--accent);
+      }
+      
+      .folder-item.dragging {
+        opacity: 0.35;
+        background: var(--bg-hover);
+      }
+      .folder-item.drag-over-top {
+        border-top: 3px solid var(--accent) !important;
+      }
+      .folder-item.drag-over-bottom {
+        border-bottom: 3px solid var(--accent) !important;
+      }
+
+      .folder-name { flex-grow: 1; font-weight: 500; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+      
+      .btn-delete-folder {
+        background: transparent; border: none; color: var(--text-muted); cursor: pointer;
+        opacity: 0; padding: 4px; transition: var(--transition);
+      }
+      .folder-item:hover .btn-delete-folder { opacity: 1; }
+      .btn-delete-folder:hover { color: var(--danger); }
+
+      .sidebar-footer {
+        padding: 15px;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .btn-disk-connect {
+        width: 100%;
+        padding: 10px 12px;
+        background: rgba(255, 122, 31, 0.15);
+        border: 1px solid var(--accent);
+        color: var(--text-main);
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+        text-align: center;
+      }
+      .btn-disk-connect:hover {
+        background: var(--accent);
+        color: #fff;
+      }
+
+      #disk-status {
+        font-size: 11px;
+        color: var(--text-muted);
+        text-align: center;
+        display: block;
+        word-break: break-all;
+      }
+
+      .btn-theme {
+        background: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-main);
+        font-size: 20px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: var(--transition);
+        align-self: flex-start;
+      }
+      .btn-theme:hover { background: var(--bg-hover); border-color: var(--accent); }
+
+      /* ========== MAIN CONTENT ========== */
+      #main-content {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+      }
+
+      .content-header {
+        padding: 18px 24px;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--bg-sidebar);
+        display: flex;
+        justify-content: center; 
+        align-items: center;
+        z-index: 10;
+      }
+
+      #current-folder-title {
+        font-size: 18px;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 6px 12px;
+        border-radius: 6px;
+        border: 1px dashed transparent;
+        transition: var(--transition);
+      }
+      #current-folder-title:hover {
+        border-color: var(--accent);
+        background: var(--bg-hover);
+        color: var(--accent);
+      }
+
+      /* Vùng phát Media */
+      #workspace {
+        flex-grow: 1;
+        position: relative;
+        background: #000;
+        overflow: hidden;
+        cursor: pointer;
+      }
+
+      #main-video, #main-image {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: none;
+      }
+
+      .empty-state {
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        color: #fff;
+      }
+
+      .pause-indicator {
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 80px;
+        color: rgba(255, 255, 255, 0.7);
+        pointer-events: none;
+        display: none;
+        text-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      }
+
+      .btn-fullscreen {
+        position: absolute;
+        bottom: 25px;
+        right: 25px;
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 8px;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        font-size: 20px;
+        z-index: 20;
+        opacity: 0;
+        transition: var(--transition);
+      }
+      #workspace:hover .btn-fullscreen { opacity: 1; }
+      .btn-fullscreen:hover { background: var(--accent); border-color: var(--accent); transform: scale(1.1); }
+
+      /* ========== MODAL TẠO / SỬA ========== */
+      .modal-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(5px);
+        display: none; justify-content: center; align-items: center; z-index: 1000;
+      }
+      .modal-overlay.active { display: flex; }
+
+      .modal-content {
+        background: var(--bg-sidebar);
+        padding: 30px;
+        border-radius: var(--radius);
+        width: 450px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        border: 1px solid var(--border-color);
+      }
+
+      .modal-title { margin-bottom: 20px; font-size: 20px; text-align: center; }
+
+      .input-group { margin-bottom: 20px; }
+      .input-group label { display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px; }
+      .text-input {
+        width: 100%; padding: 10px 12px; border-radius: 6px;
+        background: var(--bg-main); color: var(--text-main);
+        border: 1px solid var(--border-color); outline: none;
+      }
+      .text-input:focus { border-color: var(--accent); }
+
+      .drop-zone {
+        border: 2px dashed var(--border-color);
+        border-radius: 8px; padding: 20px; text-align: center;
+        background: var(--bg-main); color: var(--text-muted);
+        cursor: pointer; transition: var(--transition);
+        font-size: 13px; position: relative; overflow: hidden;
+      }
+      .drop-zone:hover, .drop-zone.dragover {
+        border-color: var(--accent); background: var(--bg-hover); color: var(--accent);
+      }
+      .drop-zone input[type="file"] { display: none; }
+      .file-name-display { font-weight: bold; color: #4cd137; margin-top: 8px; display: block;}
+
+      .modal-actions { display: flex; gap: 10px; margin-top: 25px; }
+      .btn-primary {
+        flex: 1; padding: 12px; background: var(--accent); color: #fff;
+        border: none; border-radius: 6px; font-weight: bold; cursor: pointer;
+      }
+      .btn-secondary {
+        flex: 1; padding: 12px; background: transparent; color: var(--text-main);
+        border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+
+    <!-- SIDEBAR -->
+    <div id="sidebar">
+      <div class="sidebar-header">
+        <button class="btn-add" id="btn-new-folder">➕ Tạo Thư mục mới</button>
+      </div>
+      <ul id="folder-list"></ul>
+      <div class="sidebar-footer">
+        <button id="btn-disk-connect" class="btn-disk-connect" title="Kết nối tự động ghi file đĩa cứng D/E">📁 KẾT NỐI FILE Ổ D/E</button>
+        <span id="disk-status">Chưa kết nối file ổ D/E</span>
+        <button id="theme-toggle" class="btn-theme" title="Đổi giao diện Sáng/Tối">🌙</button>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main-content">
+      <div class="content-header">
+        <div id="current-folder-title" title="Nhấn để sửa thông tin">Chưa chọn thư mục (Click để sửa)</div>
+      </div>
+      <div id="workspace" title="Double Click / Phím Cách để Dừng/Phát">
+        <video id="main-video" muted loop playsinline></video>
+        <img id="main-image" alt="Visual Content" />
+        <audio id="main-audio" loop></audio>
+        
+        <div id="empty-state" class="empty-state">
+          <h2>🎬 Không gian Trình chiếu</h2>
+          <p>Chọn một thư mục bên trái để bắt đầu phát Video/Hình ảnh và Âm thanh.</p>
+        </div>
+        
+        <div id="pause-indicator" class="pause-indicator">⏸️</div>
+
+        <div id="btn-fullscreen" class="btn-fullscreen" title="Toàn màn hình">
+          <svg fill="currentColor" width="24" height="24" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL TẠO/SỬA THƯ MỤC -->
+    <div class="modal-overlay" id="editor-modal">
+      <div class="modal-content">
+        <h3 class="modal-title" id="modal-heading">Tạo Thư Mục Mới</h3>
+        
+        <div class="input-group">
+          <label>Tên Thư Mục Chính</label>
+          <input type="text" id="input-folder-name" class="text-input" placeholder="Nhập tên thư mục...">
+        </div>
+
+        <div class="input-group">
+          <label>File Video hoặc Hình ảnh Tĩnh</label>
+          <div class="drop-zone" id="drop-video">
+            <span>Kéo thả file Video/Hình ảnh vào đây hoặc Click để chọn</span>
+            <span class="file-name-display" id="display-video-name"></span>
+            <input type="file" id="input-video" accept="video/*, image/*">
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label>File Âm Thanh (Hỗ trợ Audio hoặc tách âm từ Video)</label>
+          <div class="drop-zone" id="drop-audio">
+            <span>Kéo thả file Audio/Video vào đây hoặc Click để chọn</span>
+            <span class="file-name-display" id="display-audio-name"></span>
+            <input type="file" id="input-audio" accept="audio/*, video/*">
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn-secondary" id="btn-cancel">Hủy bỏ</button>
+          <button class="btn-primary" id="btn-save">Lưu Dữ Liệu</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      /**
+       * KIẾN TRÚC LÕI - PHIÊN BẢN 8.000 (V3.3 - Tối ưu xử lý Video dung lượng lớn)
+       */
+
+      // GIỚI HẠN DUNG LƯỢNG MÃ HÓA BASE64 (30MB)
+      const MAX_BASE64_SIZE = 30 * 1024 * 1024;
+
+      const blobToBase64 = (blob) => new Promise((resolve, reject) => {
+        if (!blob) return resolve(null);
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+
+      const base64ToBlob = async (base64Str) => {
+        if (!base64Str) return null;
+        const res = await fetch(base64Str);
+        return await res.blob();
+      };
+
+      // --- MODULE 1: QUẢN LÝ CƠ SỞ DỮ LIỆU (IndexedDB) ---
+      const DBManager = (() => {
+        const DB_NAME = "MediaSyncDB";
+        const DB_VERSION = 2;
+        let db = null;
+
+        const init = () => new Promise((resolve, reject) => {
+          const request = indexedDB.open(DB_NAME, DB_VERSION);
+          request.onupgradeneeded = (e) => {
+            const tempDb = e.target.result;
+            if (!tempDb.objectStoreNames.contains("folders")) {
+              tempDb.createObjectStore("folders", { keyPath: "id", autoIncrement: true });
+            }
+            if (!tempDb.objectStoreNames.contains("handles")) {
+              tempDb.createObjectStore("handles", { keyPath: "id" });
+            }
+          };
+          request.onsuccess = (e) => { db = e.target.result; resolve(); };
+          request.onerror = (e) => reject(e);
+        });
+
+        const saveFolder = (folderData) => new Promise((resolve, reject) => {
+          const tx = db.transaction("folders", "readwrite");
+          const req = tx.objectStore("folders").put(folderData);
+          req.onsuccess = (e) => resolve(e.target.result); 
+          req.onerror = (e) => reject(e);
+        });
+
+        const getAllFolders = () => new Promise((resolve, reject) => {
+          const tx = db.transaction("folders", "readonly");
+          const req = tx.objectStore("folders").getAll();
+          req.onsuccess = (e) => resolve(e.target.result);
+          req.onerror = (e) => reject(e);
+        });
+
+        const getFolder = (id) => new Promise((resolve, reject) => {
+          const tx = db.transaction("folders", "readonly");
+          const req = tx.objectStore("folders").get(id);
+          req.onsuccess = (e) => resolve(e.target.result);
+          req.onerror = (e) => reject(e);
+        });
+
+        const deleteFolder = (id) => new Promise((resolve, reject) => {
+          const tx = db.transaction("folders", "readwrite");
+          const req = tx.objectStore("folders").delete(id);
+          req.onsuccess = () => resolve();
+          req.onerror = (e) => reject(e);
+        });
+
+        const saveFileHandle = (handle) => new Promise((resolve, reject) => {
+          const tx = db.transaction("handles", "readwrite");
+          const req = tx.objectStore("handles").put({ id: "main_file_handle", handle });
+          req.onsuccess = () => resolve();
+          req.onerror = (e) => reject(e);
+        });
+
+        const getFileHandle = () => new Promise((resolve, reject) => {
+          const tx = db.transaction("handles", "readonly");
+          const req = tx.objectStore("handles").get("main_file_handle");
+          req.onsuccess = (e) => resolve(e.target.result?.handle || null);
+          req.onerror = (e) => reject(e);
+        });
+
+        return { init, saveFolder, getAllFolders, getFolder, deleteFolder, saveFileHandle, getFileHandle };
+      })();
+
+      // --- MODULE NATIVE FILE SYSTEM ACCESS API ---
+      const DiskFileSystemManager = (() => {
+        let cachedHandle = null;
+        let saveTimeout = null;
+
+        const updateStatus = (text, isSuccess = false) => {
+          const el = document.getElementById("disk-status");
+          if (el) {
+            el.textContent = text;
+            el.style.color = isSuccess ? "var(--accent)" : "var(--text-muted)";
+          }
+        };
+
+        const verifyPermission = async (fileHandle, readWrite) => {
+          const options = {};
+          if (readWrite) options.mode = "readwrite";
+          if ((await fileHandle.queryPermission(options)) === "granted") return true;
+          if ((await fileHandle.requestPermission(options)) === "granted") return true;
+          return false;
+        };
+
+        const connectFile = async () => {
+          if (!('showOpenFilePicker' in window) && !('showSaveFilePicker' in window)) {
+            alert("Trình duyệt không hỗ trợ File System Access API. Vui lòng sử dụng Chrome hoặc Edge.");
+            return;
+          }
+          try {
+            let fileHandle;
+            if (window.showOpenFilePicker) {
+              const [handle] = await window.showOpenFilePicker({
+                types: [{
+                  description: 'JSON Database File',
+                  accept: { 'application/json': ['.json'] }
+                }],
+                multiple: false
+              });
+              fileHandle = handle;
+            } else {
+              fileHandle = await window.showSaveFilePicker({
+                suggestedName: 'mediamuxer_database.json',
+                types: [{
+                  description: 'JSON Files',
+                  accept: { 'application/json': ['.json'] }
+                }]
+              });
+            }
+
+            if (fileHandle) {
+              cachedHandle = fileHandle;
+              await DBManager.saveFileHandle(fileHandle);
+              const file = await fileHandle.getFile();
+              const content = await file.text();
+
+              if (content.trim()) {
+                const data = JSON.parse(content);
+                await restoreFromPayload(data);
+              } else {
+                await saveToDisk(true);
+              }
+
+              updateStatus(`✅ Đã kết nối: ${fileHandle.name}`, true);
+              alert(`Đã kết nối thành công với file "${fileHandle.name}" trên ổ cứng! Mọi cấu trúc và dữ liệu sẽ tự động lưu vĩnh viễn.`);
+            }
+          } catch (err) {
+            if (err.name !== 'AbortError') {
+              console.error("Lỗi File System Access API:", err);
+              alert("Lỗi kết nối file: " + err.message);
+            }
+          }
+        };
+
+        const autoLoadFromDisk = async () => {
+          try {
+            cachedHandle = await DBManager.getFileHandle();
+            if (!cachedHandle) {
+              updateStatus("Chưa kết nối file ổ D/E");
+              return;
+            }
+
+            const hasPermission = await verifyPermission(cachedHandle, false);
+            if (hasPermission) {
+              const file = await cachedHandle.getFile();
+              const content = await file.text();
+              if (content.trim()) {
+                const data = JSON.parse(content);
+                await restoreFromPayload(data);
+                updateStatus(`✅ Đã nạp từ file: ${cachedHandle.name}`, true);
+              }
+            } else {
+              updateStatus(`⚠️ Cần bấm nút kết nối để cấp quyền lại: ${cachedHandle.name}`);
+            }
+          } catch (err) {
+            console.error("Lỗi tự động nạp file từ thẻ IndexedDB:", err);
+            updateStatus("⚠️ File bị đổi tên hoặc di chuyển");
+          }
+        };
+
+        const restoreFromPayload = async (payload) => {
+          if (!Array.isArray(payload)) return;
+          const existingFolders = await DBManager.getAllFolders();
+          const existingMap = new Map(existingFolders.map(f => [f.id, f]));
+
+          for (const item of payload) {
+            const existing = existingMap.get(item.id);
+            let vBlob = item.videoData ? await base64ToBlob(item.videoData) : (existing ? existing.videoBlob : null);
+            let aBlob = item.audioData ? await base64ToBlob(item.audioData) : (existing ? existing.audioBlob : null);
+
+            await DBManager.saveFolder({
+              id: item.id,
+              name: item.name,
+              videoBlob: vBlob,
+              audioBlob: aBlob,
+              timestamp: item.timestamp || Date.now(),
+              orderIndex: item.orderIndex ?? 0
+            });
+          }
+          await AppController.renderSidebar();
+          PlayerEngine.stopAndClear();
+        };
+
+        const saveToDisk = (immediate = false) => {
+          clearTimeout(saveTimeout);
+
+          const doSave = async () => {
+            try {
+              if (!cachedHandle) cachedHandle = await DBManager.getFileHandle();
+              if (!cachedHandle) return;
+
+              const hasPermission = await verifyPermission(cachedHandle, true);
+              if (!hasPermission) {
+                updateStatus(`⚠️ Chưa được cấp quyền ghi file`);
+                return;
+              }
+
+              const folders = await DBManager.getAllFolders();
+              const payload = [];
+
+              for (const f of folders) {
+                // TỐI ƯU DUNG LƯỢNG: Chỉ chuyển Base64 nếu file nhỏ hơn 30MB
+                const vB64 = (f.videoBlob && f.videoBlob.size <= MAX_BASE64_SIZE) ? await blobToBase64(f.videoBlob) : null;
+                const aB64 = (f.audioBlob && f.audioBlob.size <= MAX_BASE64_SIZE) ? await blobToBase64(f.audioBlob) : null;
+
+                payload.push({
+                  id: f.id,
+                  name: f.name,
+                  videoData: vB64,
+                  audioData: aB64,
+                  timestamp: f.timestamp,
+                  orderIndex: f.orderIndex ?? 0
+                });
+              }
+
+              const writable = await cachedHandle.createWritable();
+              await writable.write(JSON.stringify(payload, null, 2));
+              await writable.close();
+              updateStatus(`✅ Đã lưu cấu trúc đĩa D/E (${new Date().toLocaleTimeString('vi-VN')})`, true);
+            } catch (err) {
+              console.error("Không thể ghi trực tiếp xuống ổ D/E:", err);
+              updateStatus(`❌ Lỗi ghi file ổ D/E`);
+            }
+          };
+
+          if (immediate) doSave();
+          else saveTimeout = setTimeout(doSave, 500);
+        };
+
+        return { connectFile, autoLoadFromDisk, saveToDisk };
+      })();
+
+      // --- MODULE 2: ĐỘNG CƠ PHÁT MEDIA ---
+      const PlayerEngine = (() => {
+        const videoEl = document.getElementById('main-video');
+        const imageEl = document.getElementById('main-image');
+        const audioEl = document.getElementById('main-audio');
+        const emptyState = document.getElementById('empty-state');
+        const pauseIndicator = document.getElementById('pause-indicator');
+        const workspace = document.getElementById('workspace');
+        
+        let currentMediaUrl = null;
+        let currentAudioUrl = null;
+        let isImage = false;
+        let isPlaying = false;
+
+        const loadAndPlay = (mediaBlob, audioBlob) => {
+          if (currentMediaUrl) URL.revokeObjectURL(currentMediaUrl);
+          if (currentAudioUrl) URL.revokeObjectURL(currentAudioUrl);
+
+          emptyState.style.display = 'none';
+
+          if (mediaBlob) {
+            currentMediaUrl = URL.createObjectURL(mediaBlob);
+            isImage = mediaBlob.type.startsWith('image/');
+
+            if (isImage) {
+              videoEl.style.display = 'none';
+              videoEl.removeAttribute('src');
+              imageEl.style.display = 'block';
+              imageEl.src = currentMediaUrl;
+            } else {
+              imageEl.style.display = 'none';
+              imageEl.removeAttribute('src');
+              videoEl.style.display = 'block';
+              videoEl.src = currentMediaUrl;
+            }
+          } else {
+            videoEl.style.display = 'none';
+            imageEl.style.display = 'none';
+            videoEl.removeAttribute('src');
+            imageEl.removeAttribute('src');
+            isImage = false;
+          }
+
+          if (audioBlob) {
+            currentAudioUrl = URL.createObjectURL(audioBlob);
+            audioEl.src = currentAudioUrl;
+          } else {
+            audioEl.removeAttribute('src');
+          }
+
+          playAll();
+        };
+
+        const playAll = () => {
+          if (!isImage && videoEl.src) videoEl.play().catch(e => console.log("Video Play Error", e));
+          if (audioEl.src) audioEl.play().catch(e => console.log("Audio Play Error", e));
+          isPlaying = true;
+          pauseIndicator.style.display = 'none';
+        };
+
+        const pauseAll = () => {
+          if (!isImage && videoEl.src) videoEl.pause();
+          if (audioEl.src) audioEl.pause();
+          isPlaying = false;
+          pauseIndicator.style.display = 'block';
+        };
+
+        const togglePlay = () => {
+          if (!videoEl.src && !imageEl.src && !audioEl.src) return;
+          isPlaying ? pauseAll() : playAll();
+        };
+
+        const stopAndClear = () => {
+          pauseAll();
+          
+          if (currentMediaUrl) URL.revokeObjectURL(currentMediaUrl);
+          if (currentAudioUrl) URL.revokeObjectURL(currentAudioUrl);
+          currentMediaUrl = null;
+          currentAudioUrl = null;
+
+          videoEl.removeAttribute('src');
+          imageEl.removeAttribute('src');
+          audioEl.removeAttribute('src');
+          videoEl.style.display = 'none';
+          imageEl.style.display = 'none';
+          emptyState.style.display = 'block';
+          pauseIndicator.style.display = 'none';
+        };
+        
+        const toggleFullscreen = () => {
+          if (!document.fullscreenElement) {
+            workspace.requestFullscreen().catch(err => console.error("Lỗi Fullscreen:", err));
+          } else {
+            document.exitFullscreen();
+          }
+        };
+
+        return { loadAndPlay, togglePlay, stopAndClear, toggleFullscreen };
+      })();
+
+      // --- MODULE 3: ĐIỀU KHIỂN GIAO DIỆN & LOGIC CHÍNH ---
+      const AppController = (() => {
+        let currentEditingId = null; 
+        let tempVideoBlob = null;
+        let tempAudioBlob = null;
+        let activeFolderId = null;
+        let draggedFolderId = null; 
+
+        const folderListEl = document.getElementById('folder-list');
+        const modal = document.getElementById('editor-modal');
+        const titleEl = document.getElementById('current-folder-title');
+
+        const init = async () => {
+          await DBManager.init();
+          setupTheme();
+          setupEvents();
+          await renderSidebar();
+          await DiskFileSystemManager.autoLoadFromDisk();
+        };
+
+        const setupTheme = () => {
+          const savedTheme = localStorage.getItem('theme') || 'dark';
+          document.documentElement.setAttribute('data-theme', savedTheme);
+          document.getElementById('theme-toggle').textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+          
+          document.getElementById('theme-toggle').addEventListener('click', () => {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            document.getElementById('theme-toggle').textContent = next === 'dark' ? '☀️' : '🌙';
+          });
+        };
+
+        const renderSidebar = async () => {
+          let folders = await DBManager.getAllFolders();
+          folders.sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+
+          folderListEl.innerHTML = '';
+          
+          folders.forEach((f) => {
+            const li = document.createElement('li');
+            li.className = `folder-item ${f.id === activeFolderId ? 'active' : ''}`;
+            li.draggable = true; 
+            li.innerHTML = `
+              <span class="folder-name">📁 ${f.name}</span>
+              <button class="btn-delete-folder">🗑️</button>
+            `;
+            
+            li.addEventListener('click', (e) => {
+              if (e.target.tagName !== 'BUTTON') {
+                if (activeFolderId === f.id) {
+                   openModal(f); 
+                } else {
+                   selectFolder(f.id); 
+                }
+              }
+            });
+
+            li.querySelector('.btn-delete-folder').addEventListener('click', async (e) => {
+              e.stopPropagation();
+              if (confirm(`Xóa thư mục "${f.name}"? Dữ liệu bên trong sẽ bị gỡ bỏ.`)) {
+                await DBManager.deleteFolder(f.id);
+                DiskFileSystemManager.saveToDisk();
+                if (activeFolderId === f.id) {
+                  activeFolderId = null;
+                  titleEl.textContent = 'Chưa chọn thư mục (Click để sửa)';
+                  PlayerEngine.stopAndClear();
+                }
+                renderSidebar();
+              }
+            });
+            
+            li.addEventListener('dragstart', (e) => {
+               draggedFolderId = f.id;
+               e.dataTransfer.setData('text/plain', f.id);
+               e.dataTransfer.effectAllowed = 'move';
+               setTimeout(() => li.classList.add('dragging'), 0);
+            });
+            
+            li.addEventListener('dragend', () => {
+               li.classList.remove('dragging');
+               document.querySelectorAll('.folder-item').forEach(item => {
+                 item.classList.remove('drag-over-top', 'drag-over-bottom');
+               });
+               draggedFolderId = null;
+            });
+            
+            li.addEventListener('dragover', (e) => {
+               e.preventDefault();
+               e.dataTransfer.dropEffect = 'move';
+               if (!draggedFolderId || draggedFolderId === f.id) return;
+
+               const rect = li.getBoundingClientRect();
+               const midpoint = rect.top + rect.height / 2;
+
+               li.classList.remove('drag-over-top', 'drag-over-bottom');
+               if (e.clientY < midpoint) {
+                 li.classList.add('drag-over-top');
+               } else {
+                 li.classList.add('drag-over-bottom');
+               }
+            });
+            
+            li.addEventListener('dragleave', (e) => {
+               if (!li.contains(e.relatedTarget)) {
+                 li.classList.remove('drag-over-top', 'drag-over-bottom');
+               }
+            });
+            
+            li.addEventListener('drop', async (e) => {
+               e.preventDefault();
+               li.classList.remove('drag-over-top', 'drag-over-bottom');
+               
+               if (!draggedFolderId || draggedFolderId === f.id) return;
+
+               const rect = li.getBoundingClientRect();
+               const isBelow = e.clientY >= rect.top + rect.height / 2;
+
+               const dragIdx = folders.findIndex(x => x.id === draggedFolderId);
+               let dropIdx = folders.findIndex(x => x.id === f.id);
+
+               const [movedItem] = folders.splice(dragIdx, 1);
+               
+               dropIdx = folders.findIndex(x => x.id === f.id);
+               if (isBelow) {
+                 folders.splice(dropIdx + 1, 0, movedItem);
+               } else {
+                 folders.splice(dropIdx, 0, movedItem);
+               }
+               
+               await Promise.all(folders.map((folder, index) => {
+                  folder.orderIndex = index;
+                  return DBManager.saveFolder(folder);
+               }));
+               
+               DiskFileSystemManager.saveToDisk();
+               renderSidebar();
+            });
+
+            folderListEl.appendChild(li);
+          });
+        };
+
+        const selectFolder = async (id) => {
+          activeFolderId = id;
+          renderSidebar(); 
+          
+          const folder = await DBManager.getFolder(id);
+          titleEl.textContent = folder.name;
+          
+          PlayerEngine.loadAndPlay(folder.videoBlob, folder.audioBlob);
+        };
+
+        const setupEvents = () => {
+          const workspace = document.getElementById('workspace');
+          
+          document.getElementById('btn-disk-connect').addEventListener('click', DiskFileSystemManager.connectFile);
+
+          document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+              if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+              e.preventDefault();
+              PlayerEngine.togglePlay();
+            }
+          });
+
+          workspace.addEventListener('dblclick', (e) => {
+            if (e.target.closest('#btn-fullscreen')) return; 
+            PlayerEngine.togglePlay();
+          });
+          
+          document.getElementById('btn-fullscreen').addEventListener('click', (e) => {
+            e.stopPropagation(); 
+            PlayerEngine.toggleFullscreen();
+          });
+
+          document.getElementById('btn-new-folder').addEventListener('click', () => openModal());
+
+          titleEl.addEventListener('click', async () => {
+            if (!activeFolderId) return;
+            const folder = await DBManager.getFolder(activeFolderId);
+            openModal(folder);
+          });
+
+          document.getElementById('btn-cancel').addEventListener('click', closeModal);
+
+          setupDropZone('drop-video', 'input-video', 'display-video-name', (file) => tempVideoBlob = file, ['video/', 'image/']);
+          setupDropZone('drop-audio', 'input-audio', 'display-audio-name', (file) => tempAudioBlob = file, ['audio/', 'video/']);
+
+          document.getElementById('btn-save').addEventListener('click', async () => {
+            const name = document.getElementById('input-folder-name').value.trim() || 'Thư mục không tên';
+            
+            const folderData = {
+              name: name,
+              videoBlob: tempVideoBlob,
+              audioBlob: tempAudioBlob,
+              timestamp: Date.now()
+            };
+
+            if (currentEditingId) {
+              folderData.id = currentEditingId; 
+              const oldFolder = await DBManager.getFolder(currentEditingId);
+              if (oldFolder.orderIndex !== undefined) folderData.orderIndex = oldFolder.orderIndex;
+            } else {
+              const allFolders = await DBManager.getAllFolders();
+              folderData.orderIndex = allFolders.length; 
+            }
+
+            const savedId = await DBManager.saveFolder(folderData);
+            DiskFileSystemManager.saveToDisk();
+            closeModal();
+            await renderSidebar();
+            
+            if (!currentEditingId || currentEditingId === activeFolderId) {
+               selectFolder(savedId);
+            }
+          });
+        };
+
+        const setupDropZone = (zoneId, inputId, displayId, callback, expectedMimes) => {
+          const zone = document.getElementById(zoneId);
+          const input = document.getElementById(inputId);
+          const display = document.getElementById(displayId);
+
+          zone.addEventListener('click', () => input.click());
+
+          input.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) handleFile(e.target.files[0], display, callback, expectedMimes);
+          });
+
+          zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+          zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+          zone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            zone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0], display, callback, expectedMimes);
+          });
+        };
+
+        const handleFile = (file, displayEl, callback, expectedMimes) => {
+          const mimes = Array.isArray(expectedMimes) ? expectedMimes : [expectedMimes];
+          const isValid = mimes.some(mime => file.type.startsWith(mime));
+
+          if (!isValid) {
+            alert(`⛔ BÁO LỖI: Định dạng từ chối. Hệ thống chỉ hỗ trợ: ${mimes.join(' hoặc ').replace(/\//g, '')}`);
+            return;
+          }
+          displayEl.textContent = `✅ Đã tải lên: ${file.name}`;
+          callback(file);
+        };
+
+        const openModal = (folderData = null) => {
+          currentEditingId = folderData ? folderData.id : null;
+          tempVideoBlob = folderData ? folderData.videoBlob : null;
+          tempAudioBlob = folderData ? folderData.audioBlob : null;
+
+          document.getElementById('modal-heading').textContent = folderData ? 'Chỉnh Sửa Thư Mục' : 'Tạo Thư Mục Mới';
+          document.getElementById('input-folder-name').value = folderData ? folderData.name : '';
+          
+          document.getElementById('display-video-name').textContent = tempVideoBlob ? '✅ (Giữ nguyên file cũ)' : '';
+          document.getElementById('display-audio-name').textContent = tempAudioBlob ? '✅ (Giữ nguyên file cũ)' : '';
+          
+          document.getElementById('input-video').value = '';
+          document.getElementById('input-audio').value = '';
+
+          modal.classList.add('active');
+        };
+
+        const closeModal = () => {
+          modal.classList.remove('active');
+        };
+
+        return { init, renderSidebar };
+      })();
+
+      window.addEventListener('DOMContentLoaded', AppController.init);
+    </script>
+  </body>
+</html>
