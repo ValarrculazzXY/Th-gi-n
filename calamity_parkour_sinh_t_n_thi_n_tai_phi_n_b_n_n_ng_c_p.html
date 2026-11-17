@@ -1,0 +1,4043 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Calamity Parkour: Sinh Tồn Thiên Tai — Phiên Bản Nâng Cấp</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: radial-gradient(circle at center, #0f172a 0%, #03060e 100%);
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #f8fafc;
+      touch-action: none;
+    }
+
+    #game-wrapper {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(148, 163, 184, 0.22);
+      border-radius: 14px;
+      background: #090d16;
+    }
+
+    /* Overlay Modals */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(4, 7, 15, 0.8);
+      backdrop-filter: blur(9px);
+      -webkit-backdrop-filter: blur(9px);
+      z-index: 20;
+      padding: 14px;
+      transition: opacity 0.2s ease;
+    }
+
+    .overlay.hidden {
+      display: none;
+      pointer-events: none;
+    }
+
+    .panel {
+      width: 100%;
+      max-width: 650px;
+      background: linear-gradient(165deg, rgba(30, 41, 59, 0.95) 0%, rgba(12, 19, 34, 0.98) 100%);
+      border: 1px solid rgba(148, 163, 184, 0.26);
+      border-radius: 22px;
+      padding: 22px 24px;
+      box-shadow: 0 25px 55px -12px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      text-align: center;
+      max-height: 94vh;
+      overflow-y: auto;
+    }
+
+    .panel::-webkit-scrollbar {
+      width: 6px;
+    }
+    .panel::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.3);
+      border-radius: 4px;
+    }
+
+    .game-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      background: rgba(249, 115, 22, 0.18);
+      color: #fb923c;
+      border: 1px solid rgba(251, 146, 60, 0.35);
+      margin-bottom: 8px;
+    }
+
+    h1.title {
+      font-size: clamp(1.75rem, 4vw, 2.5rem);
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      line-height: 1.08;
+      background: linear-gradient(135deg, #ffffff 0%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 3px;
+    }
+
+    .subtitle {
+      font-size: 0.9rem;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      color: #38bdf8;
+      margin-bottom: 14px;
+    }
+
+    /* Difficulty Selector */
+    .diff-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .diff-card {
+      position: relative;
+      padding: 11px 12px;
+      border-radius: 14px;
+      background: rgba(15, 23, 42, 0.78);
+      border: 2px solid rgba(148, 163, 184, 0.2);
+      cursor: pointer;
+      transition: all 0.16s ease;
+      text-align: left;
+    }
+
+    .diff-card:hover {
+      border-color: rgba(148, 163, 184, 0.45);
+      transform: translateY(-1px);
+    }
+
+    .diff-card.active.normal {
+      border-color: #38bdf8;
+      background: rgba(56, 189, 248, 0.12);
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.2);
+    }
+
+    .diff-card.active.hard {
+      border-color: #f43f5e;
+      background: rgba(244, 63, 94, 0.14);
+      box-shadow: 0 0 20px rgba(244, 63, 94, 0.25);
+    }
+
+    .diff-title {
+      font-size: 0.96rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 3px;
+    }
+
+    .diff-card.normal .diff-title { color: #38bdf8; }
+    .diff-card.hard .diff-title { color: #fb7185; }
+
+    .diff-desc {
+      font-size: 0.74rem;
+      color: #cbd5e1;
+      line-height: 1.3;
+      margin-bottom: 6px;
+    }
+
+    .diff-record {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #fbbf24;
+      background: rgba(251, 191, 36, 0.12);
+      padding: 3px 8px;
+      border-radius: 6px;
+      display: inline-block;
+    }
+
+    /* Pre-Run Customization Bar */
+    .custom-section {
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin-bottom: 14px;
+      text-align: left;
+    }
+
+    .custom-header {
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #94a3b8;
+      margin-bottom: 7px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .option-row-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .chip-card {
+      padding: 8px 8px;
+      border-radius: 10px;
+      background: rgba(30, 41, 59, 0.7);
+      border: 1.5px solid rgba(148, 163, 184, 0.2);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: center;
+    }
+
+    .chip-card:hover {
+      border-color: rgba(226, 232, 240, 0.45);
+    }
+
+    .chip-card.active {
+      border-color: #facc15;
+      background: rgba(250, 204, 21, 0.12);
+      box-shadow: 0 0 14px rgba(250, 204, 21, 0.18);
+    }
+
+    .chip-swatch {
+      width: 24px;
+      height: 8px;
+      border-radius: 4px;
+      margin: 0 auto 5px;
+    }
+
+    .chip-name {
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: #f8fafc;
+      margin-bottom: 2px;
+    }
+
+    .chip-sub {
+      font-size: 0.67rem;
+      color: #94a3b8;
+      line-height: 1.25;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 13px 18px;
+      border-radius: 13px;
+      border: none;
+      font-size: 1rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: transform 0.13s ease, box-shadow 0.13s ease, filter 0.13s ease;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn-play {
+      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+      color: #ffffff;
+      font-size: 1.2rem;
+      padding: 15px 22px;
+      box-shadow: 0 10px 26px rgba(34, 197, 94, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.32);
+      margin-bottom: 10px;
+    }
+
+    .btn-play:hover {
+      filter: brightness(1.08);
+      transform: translateY(-2px);
+    }
+
+    .btn-row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .btn-secondary {
+      background: rgba(51, 65, 85, 0.85);
+      color: #f1f5f9;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      font-size: 0.9rem;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(71, 85, 105, 0.95);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+      color: #ffffff;
+      box-shadow: 0 8px 20px rgba(244, 63, 94, 0.35);
+    }
+
+    .quick-controls {
+      margin-top: 8px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(148, 163, 184, 0.15);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 7px;
+      font-size: 0.74rem;
+      color: #94a3b8;
+    }
+
+    .key-chip {
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(148, 163, 184, 0.32);
+      color: #e2e8f0;
+      padding: 2px 6px;
+      border-radius: 5px;
+      font-weight: 700;
+      font-family: monospace;
+    }
+
+    /* Settings Controls */
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: rgba(15, 23, 42, 0.68);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 12px;
+      margin-bottom: 9px;
+      text-align: left;
+    }
+
+    .setting-label {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #f1f5f9;
+    }
+
+    .setting-sub {
+      font-size: 0.73rem;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+
+    input[type="range"] {
+      width: 125px;
+      accent-color: #38bdf8;
+      cursor: pointer;
+    }
+
+    .toggle-btn {
+      min-width: 72px;
+      padding: 6px 12px;
+      border-radius: 9px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      font-weight: 800;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .toggle-btn.on {
+      background: #0284c7;
+      color: #ffffff;
+      border-color: #38bdf8;
+    }
+
+    .toggle-btn.off {
+      background: #1e293b;
+      color: #94a3b8;
+    }
+
+    .controls-box {
+      background: rgba(15, 23, 42, 0.78);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 12px;
+      padding: 11px 13px;
+      margin: 10px 0 14px;
+      text-align: left;
+      font-size: 0.79rem;
+      line-height: 1.6;
+      color: #cbd5e1;
+    }
+
+    /* Achievements Grid */
+    .ach-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 12px 0 16px;
+      text-align: left;
+    }
+
+    .ach-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      opacity: 0.58;
+    }
+
+    .ach-card.unlocked {
+      opacity: 1;
+      border-color: rgba(250, 204, 21, 0.55);
+      background: linear-gradient(135deg, rgba(250, 204, 21, 0.12) 0%, rgba(15, 23, 42, 0.85) 100%);
+    }
+
+    .ach-icon {
+      font-size: 1.55rem;
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: rgba(30, 41, 59, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .ach-title {
+      font-size: 0.84rem;
+      font-weight: 800;
+      color: #f8fafc;
+    }
+
+    .ach-card.unlocked .ach-title {
+      color: #fde047;
+    }
+
+    .ach-desc {
+      font-size: 0.71rem;
+      color: #94a3b8;
+      line-height: 1.3;
+      margin-top: 2px;
+    }
+
+    /* Game Over Cause Box */
+    .cause-box {
+      background: rgba(244, 63, 94, 0.16);
+      border: 1px solid rgba(244, 63, 94, 0.48);
+      border-radius: 14px;
+      padding: 11px 14px;
+      margin: 10px 0 14px;
+    }
+
+    .cause-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #fda4af;
+      font-weight: 800;
+      margin-bottom: 2px;
+    }
+
+    .cause-text {
+      font-size: 1rem;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9px;
+      margin-bottom: 16px;
+    }
+
+    .stat-card {
+      background: rgba(15, 23, 42, 0.78);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 12px;
+      padding: 9px 8px;
+    }
+
+    .stat-val {
+      font-size: 1.15rem;
+      font-weight: 900;
+      color: #38bdf8;
+    }
+
+    .stat-name {
+      font-size: 0.7rem;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+
+    .new-record-tag {
+      display: inline-block;
+      background: #f59e0b;
+      color: #0f172a;
+      font-size: 0.64rem;
+      font-weight: 900;
+      padding: 1px 5px;
+      border-radius: 4px;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+
+    /* Virtual Touch Controls */
+    #touch-controls {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 15;
+      display: none;
+    }
+
+    #touch-controls.active {
+      display: block;
+    }
+
+    .touch-cluster-left {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      display: flex;
+      gap: 14px;
+      pointer-events: auto;
+    }
+
+    .touch-cluster-right {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      align-items: flex-end;
+      gap: 12px;
+      pointer-events: auto;
+    }
+
+    .t-btn {
+      width: 66px;
+      height: 66px;
+      border-radius: 50%;
+      background: rgba(15, 23, 42, 0.62);
+      border: 2px solid rgba(226, 232, 240, 0.35);
+      color: #f8fafc;
+      font-weight: 900;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+      transition: transform 0.08s ease, background 0.08s ease, box-shadow 0.15s ease;
+      text-align: center;
+      line-height: 1.1;
+    }
+
+    .t-btn.pressed {
+      transform: scale(0.9);
+      background: rgba(56, 189, 248, 0.45);
+      border-color: #38bdf8;
+    }
+
+    .t-btn.action-jump {
+      width: 76px;
+      height: 76px;
+      border-color: rgba(74, 222, 128, 0.6);
+      font-size: 0.85rem;
+    }
+
+    .t-btn.action-dash {
+      border-color: rgba(56, 189, 248, 0.6);
+      font-size: 0.82rem;
+    }
+
+    .t-btn.action-surge {
+      border-color: rgba(148, 163, 184, 0.35);
+      font-size: 0.75rem;
+      opacity: 0.55;
+    }
+
+    .t-btn.action-surge.ready {
+      opacity: 1;
+      border-color: #facc15;
+      background: rgba(234, 179, 8, 0.35);
+      box-shadow: 0 0 22px rgba(250, 204, 21, 0.65);
+      color: #fef08a;
+    }
+
+    /* Top-right Quick Pause Button on Canvas */
+    #hud-pause-btn {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      z-index: 14;
+      background: rgba(15, 23, 42, 0.74);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      color: #f8fafc;
+      border-radius: 10px;
+      padding: 7px 13px;
+      font-size: 0.82rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: none;
+    }
+
+    #hud-pause-btn.visible {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-wrapper">
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Quick Pause Button during gameplay -->
+    <button id="hud-pause-btn" aria-label="Tạm dừng">⏸ Tạm dừng</button>
+
+    <!-- Virtual Touch Controls -->
+    <div id="touch-controls">
+      <div class="touch-cluster-left">
+        <div class="t-btn" data-key="left">◀</div>
+        <div class="t-btn" data-key="right">▶</div>
+      </div>
+      <div class="touch-cluster-right">
+        <div class="t-btn action-surge" id="touch-surge-btn" data-key="surge">XUNG<br/>KÍCH</div>
+        <div class="t-btn action-dash" data-key="dash">LƯỚT</div>
+        <div class="t-btn action-jump" data-key="jump">NHẢY</div>
+      </div>
+    </div>
+
+    <!-- 1. START SCREEN -->
+    <div id="start-overlay" class="overlay">
+      <div class="panel">
+        <div class="game-badge">SURVIVAL PARKOUR ARENA • PHIÊN BẢN NÂNG CẤP</div>
+        <h1 class="title">CALAMITY PARKOUR</h1>
+        <div class="subtitle">SINH TỒN THIÊN TAI</div>
+
+        <!-- Difficulty Selector -->
+        <div class="diff-grid">
+          <div class="diff-card normal active" id="diff-normal" onclick="selectDifficulty('normal')">
+            <div class="diff-title">
+              <span>Bình thường</span>
+              <span>🛡️</span>
+            </div>
+            <div class="diff-desc">Cảnh báo 1.6s, tốc độ chuẩn, trụ đá tự nhiên vững chắc.</div>
+            <div class="diff-record" id="best-normal-display">Kỷ lục: 0.0s • 0 đ</div>
+          </div>
+
+          <div class="diff-card hard" id="diff-hard" onclick="selectDifficulty('hard')">
+            <div class="diff-title">
+              <span>Siêu khó</span>
+              <span>🔥</span>
+            </div>
+            <div class="diff-desc">Cảnh báo 0.95s, vật thể 1.45x, trụ đá nứt & lặn sau 4.5s!</div>
+            <div class="diff-record" id="best-hard-display">Kỷ lục: 0.0s • 0 đ</div>
+          </div>
+        </div>
+
+        <!-- Pre-run Customization Bar: Skins & Passive Perks -->
+        <div class="custom-section">
+          <div class="custom-header">
+            <span>🎨 Trang Phục Nhân Vật</span>
+            <span id="skin-preview-label" style="color:#38bdf8;">Người Chạy Bão</span>
+          </div>
+          <div class="option-row-3" style="margin-bottom: 10px;">
+            <div class="chip-card active" id="skin-storm" onclick="selectSkin('storm')">
+              <div class="chip-swatch" style="background: linear-gradient(90deg, #facc15, #38bdf8);"></div>
+              <div class="chip-name">Người Chạy Bão</div>
+              <div class="chip-sub">Vàng Neon & Khăn Cyan</div>
+            </div>
+            <div class="chip-card" id="skin-geologist" onclick="selectSkin('geologist')">
+              <div class="chip-swatch" style="background: linear-gradient(90deg, #fb923c, #f8fafc);"></div>
+              <div class="chip-name">Kỹ Sư Địa Chất</div>
+              <div class="chip-sub">Cam Titan & Kính Trắng</div>
+            </div>
+            <div class="chip-card" id="skin-void" onclick="selectSkin('void')">
+              <div class="chip-swatch" style="background: linear-gradient(90deg, #a855f7, #ec4899);"></div>
+              <div class="chip-name">Bóng Ma Hư Không</div>
+              <div class="chip-sub">Tím Cyber & Vệt Hồng</div>
+            </div>
+          </div>
+
+          <div class="custom-header">
+            <span>⚡ Nội Tại Bổ Trợ (Passive Perk)</span>
+            <span id="perk-preview-label" style="color:#facc15;">Động Cơ Phản Lực</span>
+          </div>
+          <div class="option-row-3">
+            <div class="chip-card active" id="perk-jetpack" onclick="selectPerk('jetpack')">
+              <div class="chip-name">🚀 Động Cơ Phản Lực</div>
+              <div class="chip-sub">-30% hồi Dash & +12% Nhảy kép</div>
+            </div>
+            <div class="chip-card" id="perk-oxygen" onclick="selectPerk('oxygen')">
+              <div class="chip-name">🫧 Bình Dưỡng Khí Lớn</div>
+              <div class="chip-sub">7.0s Oxy & +35% tốc độ bơi</div>
+            </div>
+            <div class="chip-card" id="perk-magnet" onclick="selectPerk('magnet')">
+              <div class="chip-name">🧲 Giáp Từ Trường</div>
+              <div class="chip-sub">Sẵn 1 Khiên & hút hòm tiếp tế</div>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-play" id="btn-start-play">▶ PLAY NGAY</button>
+
+        <div class="btn-row-2">
+          <button class="btn btn-secondary" id="btn-open-achievements">🏆 Thành Tựu (<span id="ach-count-label">0</span>/6)</button>
+          <button class="btn btn-secondary" id="btn-open-settings">⚙️ Cài Đặt (Settings)</button>
+        </div>
+
+        <div class="quick-controls">
+          <span><span class="key-chip">A/D</span> Chạy</span>
+          <span><span class="key-chip">Space/W</span> Nhảy kép</span>
+          <span><span class="key-chip">Shift/K</span> Lướt</span>
+          <span><span class="key-chip">E/J</span> Xung Kích (100%)</span>
+          <span><span class="key-chip">P</span> Tạm dừng</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. ACHIEVEMENTS MODAL -->
+    <div id="achievements-overlay" class="overlay hidden">
+      <div class="panel">
+        <div class="game-badge" style="background:rgba(250,204,21,0.18); color:#fde047; border-color:rgba(250,204,21,0.4);">HALL OF SURVIVORS</div>
+        <h2 style="font-size: 1.55rem; font-weight: 900; margin-bottom: 4px;">Bảng Thành Tựu</h2>
+        <div style="font-size: 0.8rem; color: #94a3b8;">Hoàn thành thử thách sinh tồn để mở khóa huy hiệu vĩnh viễn</div>
+
+        <div class="ach-grid" id="ach-list-container"></div>
+
+        <button class="btn btn-play" id="btn-close-achievements" style="margin-bottom:0;">✔ QUAY LẠI MENU</button>
+      </div>
+    </div>
+
+    <!-- 3. TOPPING SETTINGS MODAL -->
+    <div id="settings-overlay" class="overlay hidden">
+      <div class="panel">
+        <div class="game-badge">TOPPING SETTINGS</div>
+        <h2 style="font-size: 1.5rem; font-weight: 900; margin-bottom: 12px;">Cài Đặt Trò Chơi</h2>
+
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Âm lượng Hiệu ứng (SFX)</div>
+            <div class="setting-sub">Tiếng nổ, sấm sét, xung kích, nhảy, né sát nút</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="range" id="opt-sfx" min="0" max="100" value="80" />
+            <span id="opt-sfx-val" style="font-weight:800; width:38px; text-align:right;">80%</span>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Âm lượng Nhạc nền (BGM)</div>
+            <div class="setting-sub">Nhịp điệu sinh tồn tổng hợp tự động</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="range" id="opt-bgm" min="0" max="100" value="45" />
+            <span id="opt-bgm-val" style="font-weight:800; width:38px; text-align:right;">45%</span>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Rung màn hình (Screen Shake)</div>
+            <div class="setting-sub">Chấn động khi thiên thạch nổ, sét đánh & xung kích</div>
+          </div>
+          <button class="toggle-btn on" id="opt-shake">BẬT</button>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Hiển thị Hitbox (Vùng va chạm)</div>
+            <div class="setting-sub">Hiện khung nhận sát thương lõi & vòng tròn Né Sát Nút</div>
+          </div>
+          <button class="toggle-btn off" id="opt-hitbox">TẮT</button>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Nút cảm ứng ảo trên màn hình</div>
+            <div class="setting-sub">Hỗ trợ chơi trên điện thoại / máy tính bảng</div>
+          </div>
+          <button class="toggle-btn off" id="opt-touch">TẮT</button>
+        </div>
+
+        <div class="controls-box">
+          <div style="font-weight:800; color:#38bdf8; margin-bottom:4px;">📖 BẢNG ĐIỀU KHIỂN & KỸ NĂNG NÂNG CAO:</div>
+          • <strong>Di chuyển & Nhảy kép:</strong> <span class="key-chip">A/D</span> hoặc <span class="key-chip">◀/▶</span> để chạy; <span class="key-chip">W/▲/Space</span> để nhảy & nhảy kép (có tia laser định vị điểm đáp).<br/>
+          • <strong>Lướt nhanh (Dash):</strong> <span class="key-chip">Shift</span> / <span class="key-chip">K</span> bứt tốc ngắn, miễn nhiễm va chạm vật lý & thoát lực hút lốc xoáy.<br/>
+          • <strong>Xung Kích Địa Chấn (100%):</strong> <span class="key-chip">E</span> / <span class="key-chip">J</span> phá hủy vật thể bay xung quanh, tan lốc xoáy, hồi +50% Oxy và tạo bục năng lượng 3s dưới chân nếu đang ở trên không!
+        </div>
+
+        <button class="btn btn-play" id="btn-close-settings" style="margin-bottom:0;">✔ LƯU & QUAY LẠI</button>
+      </div>
+    </div>
+
+    <!-- 4. PAUSE OVERLAY -->
+    <div id="pause-overlay" class="overlay hidden">
+      <div class="panel" style="max-width: 420px;">
+        <div class="game-badge">PAUSED</div>
+        <h2 style="font-size: 1.75rem; font-weight: 900; margin-bottom: 16px;">Tạm Dừng Trận Đấu</h2>
+        <button class="btn btn-play" id="btn-resume">▶ TIẾP TỤC CHƠI</button>
+        <button class="btn btn-secondary" id="btn-pause-settings" style="margin-bottom:10px;">⚙️ Cài đặt (Settings)</button>
+        <button class="btn btn-secondary" id="btn-pause-restart" style="margin-bottom:10px;">🔄 Chơi lại từ đầu</button>
+        <button class="btn btn-danger" id="btn-pause-menu" style="margin-bottom:0;">🏠 Về Menu Chính</button>
+      </div>
+    </div>
+
+    <!-- 5. GAME OVER OVERLAY -->
+    <div id="gameover-overlay" class="overlay hidden">
+      <div class="panel">
+        <div class="game-badge" style="background:rgba(244,63,94,0.2); color:#fb7185; border-color:rgba(244,63,94,0.4);">BẠN ĐÃ GỤC NGÃ</div>
+        <h2 style="font-size: 1.8rem; font-weight: 900;">KẾT THÚC SINH TỒN</h2>
+
+        <div class="cause-box">
+          <div class="cause-label">Nguyên nhân tử vong</div>
+          <div class="cause-text" id="go-cause">Bị tấm mái tôn sắc lẹm cắt ngang</div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-val" id="go-time">0.0s</div>
+            <div class="stat-name">Thời gian sống sót</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val" id="go-best-time" style="color:#fbbf24;">0.0s</div>
+            <div class="stat-name">Kỷ lục thời gian</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val" id="go-score" style="color:#a855f7;">0</div>
+            <div class="stat-name">Tổng điểm số</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val" id="go-best-score" style="color:#facc15;">0</div>
+            <div class="stat-name">Kỷ lục điểm số</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val" id="go-graze-combo" style="color:#4ade80;">0 (x1)</div>
+            <div class="stat-name">Né sát nút (Max Combo)</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val" id="go-disasters" style="color:#fb923c;">0</div>
+            <div class="stat-name">Thiên tai vượt qua</div>
+          </div>
+        </div>
+
+        <button class="btn btn-play" id="btn-replay">🔄 CHƠI LẠI NGAY (Space / Enter)</button>
+        <button class="btn btn-secondary" id="btn-go-menu" style="margin-bottom:0;">🏠 Về Menu Chính</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * ============================================================================
+     * CALAMITY PARKOUR: SINH TỒN THIÊN TAI — PHIÊN BẢN NÂNG CẤP
+     * Single-File HTML5 Canvas 2D + Web Audio API Procedural Survival Parkour
+     * ============================================================================
+     */
+
+    // ---------------------------------------------------------------------------
+    // 1. LOGICAL CANVAS & RESPONSIVE SCALING
+    // ---------------------------------------------------------------------------
+    const LOGICAL_W = 1280;
+    const LOGICAL_H = 720;
+    const GROUND_Y = 635;
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const targetRatio = LOGICAL_W / LOGICAL_H;
+      const windowRatio = vw / vh;
+
+      let displayW, displayH;
+      if (windowRatio > targetRatio) {
+        displayH = vh;
+        displayW = vh * targetRatio;
+      } else {
+        displayW = vw;
+        displayH = vw / targetRatio;
+      }
+
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = LOGICAL_W * dpr;
+      canvas.height = LOGICAL_H * dpr;
+      canvas.style.width = `${Math.floor(displayW)}px`;
+      canvas.style.height = `${Math.floor(displayH)}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // ---------------------------------------------------------------------------
+    // 2. SKINS, PERKS, ACHIEVEMENTS & LOCALSTORAGE PERSISTENCE
+    // ---------------------------------------------------------------------------
+    const STORAGE_KEY = 'calamity_parkour_upgraded_v2';
+    const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth < 860);
+
+    const SKINS = {
+      storm: {
+        name: 'Người Chạy Bão',
+        body: '#1e293b',
+        outline: '#facc15',
+        head: '#fef08a',
+        visor: '#38bdf8',
+        scarf: '#38bdf8',
+        trail: 'rgba(56, 189, 248, '
+      },
+      geologist: {
+        name: 'Kỹ Sư Địa Chất',
+        body: '#431407',
+        outline: '#fb923c',
+        head: '#ffedd5',
+        visor: '#ffffff',
+        scarf: '#fb923c',
+        trail: 'rgba(251, 146, 60, '
+      },
+      void: {
+        name: 'Bóng Ma Hư Không',
+        body: '#1e1b4b',
+        outline: '#a855f7',
+        head: '#f3e8ff',
+        visor: '#ec4899',
+        scarf: '#ec4899',
+        trail: 'rgba(236, 72, 153, '
+      }
+    };
+
+    const PERKS = {
+      jetpack: { name: 'Động Cơ Phản Lực' },
+      oxygen: { name: 'Bình Dưỡng Khí Lớn' },
+      magnet: { name: 'Giáp Từ Trường' }
+    };
+
+    const ACHIEVEMENTS_DEF = [
+      { id: 'survive_60', icon: '⏱️', title: 'Sống Sót 60 Giây', desc: 'Sinh tồn ít nhất 60.0 giây trong một trận đấu.' },
+      { id: 'graze_10', icon: '⚡', title: 'Bậc Thầy Né Sát Nút', desc: 'Đạt 10 pha Né Sát Nút (Graze) trong một trận.' },
+      { id: 'clutch_oxygen', icon: '🫧', title: 'Thoát Chết Gang Tấc', desc: 'Ngoi lên khỏi thủy triều khi thanh Oxy còn dưới 0.5s.' },
+      { id: 'super_hard_45', icon: '🔥', title: 'Chinh Phục Siêu Khó', desc: 'Sống sót 45.0 giây ở chế độ Siêu Khó.' },
+      { id: 'surge_3', icon: '💥', title: 'Phá Đảo Bão Tố', desc: 'Kích hoạt chiêu cuối Xung Kích 3 lần trong một trận.' },
+      { id: 'untouchable_40', icon: '👑', title: 'Bất Tử Tuyệt Đối', desc: 'Sống sót 40.0 giây liên tục mà không mất máu nào.' }
+    ];
+
+    let saveData = {
+      bestNormalTime: 0,
+      bestHardTime: 0,
+      bestNormalScore: 0,
+      bestHardScore: 0,
+      selectedSkin: 'storm',
+      selectedPerk: 'jetpack',
+      unlockedAchievements: {},
+      sfxVol: 0.8,
+      bgmVol: 0.45,
+      shake: true,
+      showHitbox: false,
+      touchControls: isTouchDevice
+    };
+
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        saveData = {
+          ...saveData,
+          ...parsed,
+          unlockedAchievements: parsed.unlockedAchievements || {}
+        };
+      }
+    } catch (e) {}
+
+    function persistSave() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(saveData));
+      } catch (e) {}
+    }
+
+    // Live Achievement Unlock & Toast Queue
+    let toastQueue = [];
+    let activeToast = null;
+
+    function unlockAchievement(id) {
+      if (saveData.unlockedAchievements[id]) return;
+      const def = ACHIEVEMENTS_DEF.find((a) => a.id === id);
+      if (!def) return;
+
+      saveData.unlockedAchievements[id] = true;
+      persistSave();
+      sound.playAchievement();
+      toastQueue.push({
+        icon: def.icon,
+        title: def.title,
+        timer: 3.6,
+        maxTimer: 3.6
+      });
+    }
+
+    // ---------------------------------------------------------------------------
+    // 3. PROCEDURAL WEB AUDIO API SOUND & ADAPTIVE MUSIC ENGINE
+    // ---------------------------------------------------------------------------
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.sfxGain = null;
+        this.bgmGain = null;
+        this.noiseBuffer = null;
+        this.stepIndex = 0;
+        this.bgmTimer = 0;
+      }
+
+      unlock() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (!AudioCtx) return;
+          this.ctx = new AudioCtx();
+
+          this.sfxGain = this.ctx.createGain();
+          this.sfxGain.gain.value = saveData.sfxVol;
+          this.sfxGain.connect(this.ctx.destination);
+
+          this.bgmGain = this.ctx.createGain();
+          this.bgmGain.gain.value = saveData.bgmVol * 0.34;
+          this.bgmGain.connect(this.ctx.destination);
+
+          const bufferSize = this.ctx.sampleRate * 2;
+          this.noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+          const data = this.noiseBuffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      updateVolumes() {
+        if (this.sfxGain) this.sfxGain.gain.value = saveData.sfxVol;
+        if (this.bgmGain) this.bgmGain.gain.value = saveData.bgmVol * 0.34;
+      }
+
+      playJump(isDouble = false) {
+        if (!this.ctx || saveData.sfxVol <= 0.01) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = isDouble ? 'sine' : 'triangle';
+        osc.frequency.setValueAtTime(isDouble ? 340 : 215, now);
+        osc.frequency.exponentialRampToValueAtTime(isDouble ? 710 : 470, now + 0.14);
+        gain.gain.setValueAtTime(0.24, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+        osc.start(now);
+        osc.stop(now + 0.16);
+      }
+
+      playDash() {
+        if (!this.ctx || !this.noiseBuffer || saveData.sfxVol <= 0.01) return;
+        const now = this.ctx.currentTime;
+        const src = this.ctx.createBufferSource();
+        src.buffer = this.noiseBuffer;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(1450, now);
+        filter.frequency.exponentialRampToValueAtTime(310, now + 0.18);
+        filter.Q.value = 1.8;
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.32, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.19);
+        src.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.sfxGain);
+        src.start(now);
+        src.stop(now + 0.2);
+      }
+
+      playSurge() {
+        if (!this.ctx || !this.noiseBuffer || saveData.sfxVol <= 0.01) return;
+        const now = this.ctx.currentTime;
+        // Sub-bass shockwave drop
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(240, now);
+        osc.frequency.exponentialRampToValueAtTime(34, now + 0.45);
+        gain.gain.setValueAtTime(0.45, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.48);
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+        osc.start(now);
+        osc.stop(now + 0.5);
+
+        // High crystalline shimmer
+        const shimmer = this.ctx.createOscillator();
+        const sGain = this.ctx.createGain();
+        shimmer.type = 'sine';
+        shimmer.frequency.setValueAtTime(660, now);
+        shimmer.frequency.exponentialRampToValueAtTime(1480, now + 0.25);
+        sGain.gain.setValueAtTime(0.22, now);
+        sGain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+        shimmer.connect(sGain);
+        sGain.connect(this.sfxGain);
+        shimmer.start(now);
+        shimmer.stop(now + 0.3);
+      }
+
+      playWarning() {
+        if (!this.ctx || saveData.sfxVol <= 0.01) return;
+        const now = this.ctx.currentTime;
+        [0, 0.14].forEach((offset, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(idx === 0 ? 640 : 860, now + offset);
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = 'lowpass';
+          filter.frequency.value = 1800;
+          gain.gain.setValueAtTime(0.14, now + offset);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.11);
+          osc.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.sfxGain);
+          osc.start(now + offset);
+          osc.stop(now + offset + 0.12);
+        });
+      }
+
+      playExplosion() {
+        if (!this.ctx || !this.noiseBuffer || saveData.sfxVol <= 0.01) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const oscGain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(115, now);
+        osc.frequency.exponentialRampToValueAtTime(26, now + 0.42);
+        oscGain.gain.setValueAtTime(0.45, now);
+        oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.44);
+        osc.connect(oscGain);
+        oscGain.connect(this.sfxGain);
+        osc.start(now);
+        osc.stop(now + 0.45);
+
+        const src = this.ctx.createBufferSource();
+        src.buffer = this.noiseBuffer;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(950, now);
+        filter.frequency.exponentialRampToValueAtTime(120, now + 0.45);
+        const nGain = this.ctx.createGain();
+        nGain.gain.setValueAtTime(0.38, now);
+        nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.46);
+        src.connect(filter);
+        filter.connect(nGain);
+        nGain.connect(this.sfxGain);
+        src.start(now);
+        src.stop(now + 0.48);
+      }
+
+      playThunder() {
+        if (!this.ctx || !this.noiseBuffer || saveData.sfxVol <= 0.01) return;
+        const now = this.ctx.currentTime;
+        const src = this.ctx.createBufferSource();
+        src.buffer = this.noiseBuffer;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(2200, now);
+        filter.frequency.exponentialRampToValueAtTime(180, now + 0.4);
+        filter.Q.value = 0.8;
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.48, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+        src.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.sfxGain);
+        src.start(now);
+        src.stop(now + 0.46);
+      }
+
+      playHit() {
+        if (!this.ctx || saveData.sfxVol <= 0.01) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(180, now);
+        osc.frequency.exponentialRampToValueAtTime(48, now + 0.28);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+        osc.start(now);
+        osc.stop(now + 0.31);
+      }
+
+      playPickup() {
+        if (!this.ctx || saveData.sfxVol <= 0.01) return;
+        const now = this.ctx.currentTime;
+        [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + i * 0.055);
+          gain.gain.setValueAtTime(0.2, now + i * 0.055);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.055 + 0.18);
+          osc.connect(gain);
+          gain.connect(this.sfxGain);
+          osc.start(now + i * 0.055);
+          osc.stop(now + i * 0.055 + 0.19);
+        });
+      }
+
+      playAchievement() {
+        if (!this.ctx || saveData.sfxVol <= 0.01) return;
+        const now = this.ctx.currentTime;
+        [587.33, 739.99, 880, 1174.66].forEach((freq, i) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + i * 0.07);
+          gain.gain.setValueAtTime(0.22, now + i * 0.07);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.07 + 0.28);
+          osc.connect(gain);
+          gain.connect(this.sfxGain);
+          osc.start(now + i * 0.07);
+          osc.stop(now + i * 0.07 + 0.3);
+        });
+      }
+
+      playCloseCall(combo = 1) {
+        if (!this.ctx || saveData.sfxVol <= 0.01) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        const pitchBoost = Math.min(combo * 55, 440);
+        osc.frequency.setValueAtTime(880 + pitchBoost, now);
+        osc.frequency.exponentialRampToValueAtTime(1240 + pitchBoost, now + 0.09);
+        gain.gain.setValueAtTime(0.14, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+        osc.start(now);
+        osc.stop(now + 0.11);
+      }
+
+      playSplash() {
+        if (!this.ctx || !this.noiseBuffer || saveData.sfxVol <= 0.01) return;
+        const now = this.ctx.currentTime;
+        const src = this.ctx.createBufferSource();
+        src.buffer = this.noiseBuffer;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(600, now);
+        filter.frequency.linearRampToValueAtTime(1100, now + 0.22);
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.22, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+        src.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.sfxGain);
+        src.start(now);
+        src.stop(now + 0.26);
+      }
+
+      updateBGM(dt, isPlaying, intensity, isHard) {
+        if (!this.ctx || !isPlaying || saveData.bgmVol <= 0.01) return;
+        const stepDuration = isHard ? 0.135 : 0.165;
+        this.bgmTimer += dt;
+        if (this.bgmTimer < stepDuration) return;
+        this.bgmTimer -= stepDuration;
+
+        const now = this.ctx.currentTime;
+        const bassPattern = [82.41, 82.41, 98.00, 82.41, 110.00, 98.00, 123.47, 98.00];
+        const freq = bassPattern[this.stepIndex % bassPattern.length];
+
+        const osc = this.ctx.createOscillator();
+        const filter = this.ctx.createBiquadFilter();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, now);
+
+        filter.type = 'lowpass';
+        const cutoff = 280 + Math.min(intensity * 115, 680) + (this.stepIndex % 2 === 0 ? 150 : 0);
+        filter.frequency.setValueAtTime(cutoff, now);
+
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + stepDuration * 0.9);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.bgmGain);
+        osc.start(now);
+        osc.stop(now + stepDuration * 0.95);
+
+        if (this.noiseBuffer && (this.stepIndex % 2 === 1 || intensity > 0)) {
+          const hat = this.ctx.createBufferSource();
+          hat.buffer = this.noiseBuffer;
+          const hFilter = this.ctx.createBiquadFilter();
+          hFilter.type = 'highpass';
+          hFilter.frequency.value = 6500;
+          const hGain = this.ctx.createGain();
+          hGain.gain.setValueAtTime(this.stepIndex % 2 === 1 ? 0.07 : 0.03, now);
+          hGain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+          hat.connect(hFilter);
+          hFilter.connect(hGain);
+          hGain.connect(this.bgmGain);
+          hat.start(now);
+          hat.stop(now + 0.05);
+        }
+
+        this.stepIndex++;
+      }
+    }
+
+    const sound = new SoundEngine();
+
+    // ---------------------------------------------------------------------------
+    // 4. GAME STATE & CONFIGURATION
+    // ---------------------------------------------------------------------------
+    let gameState = 'MENU'; // 'MENU' | 'PLAYING' | 'PAUSED' | 'GAMEOVER'
+    let settingsReturnState = 'MENU';
+    let difficulty = 'normal'; // 'normal' | 'hard'
+
+    const DIFF_CONFIG = {
+      normal: {
+        label: 'BÌNH THƯỜNG',
+        telegraphStandard: 1.6,
+        telegraphTerrain: 2.0,
+        projSpeedMult: 1.0,
+        tornadoPullMult: 1.0,
+        pillarSinkTime: Infinity,
+        maxConcurrent: 2,
+        comboStartTime: 35,
+        wavySheet: false
+      },
+      hard: {
+        label: 'SIÊU KHÓ',
+        telegraphStandard: 0.95,
+        telegraphTerrain: 1.3,
+        projSpeedMult: 1.45,
+        tornadoPullMult: 1.42,
+        pillarSinkTime: 4.5,
+        maxConcurrent: 3,
+        comboStartTime: 20,
+        wavySheet: true
+      }
+    };
+
+    // Runtime Match Variables
+    let elapsedTime = 0;
+    let score = 0;
+    let disastersSurvived = 0;
+    let closeCalls = 0;
+    let combo = 1;
+    let maxCombo = 1;
+    let comboTimer = 0;
+    let surgeCharge = 0; // 0 to 100
+    let surgeUsesThisRun = 0;
+    let noDamageTimer = 0;
+    let lowestUnderwaterOxygen = 99;
+    let wasSubmerged = false;
+
+    let lastCauseOfDeath = '';
+    let shakeTimer = 0;
+    let shakeIntensity = 0;
+    let hitStopTimer = 0;
+
+    // Entities
+    let pillars = [];
+    let energyPlatform = null; // Spawned when Kinetic Surge used airborne
+    let activeDisasters = [];
+    let hazards = [];
+    let meteors = [];
+    let lightningStrikes = [];
+    let explosions = [];
+    let shockwaves = [];
+    let supplyDrops = [];
+    let particles = [];
+    let floatingTexts = [];
+    let afterimages = [];
+
+    // Environmental fluid states
+    let lavaState = {
+      active: false,
+      y: GROUND_Y + 45,
+      targetY: GROUND_Y + 45
+    };
+
+    let tidalState = {
+      active: false,
+      y: GROUND_Y + 45,
+      targetY: GROUND_Y + 45,
+      flowDir: 1,
+      wavePhase: 0,
+      electrifiedTimer: 0 // Electrified when lightning hits water
+    };
+
+    // AI Director State
+    let director = {
+      nextSpawnTimer: 1.3,
+      lastTypes: [],
+      supplyTimer: 15
+    };
+
+    // ---------------------------------------------------------------------------
+    // 5. INPUT HANDLING (KEYBOARD + MULTI-TOUCH VIRTUAL BUTTONS)
+    // ---------------------------------------------------------------------------
+    const keys = {
+      left: false,
+      right: false,
+      jumpPressed: false,
+      jumpHeld: false,
+      dashPressed: false,
+      surgePressed: false
+    };
+
+    window.addEventListener('keydown', (e) => {
+      sound.unlock();
+      const code = e.code;
+
+      if (code === 'ArrowLeft' || code === 'KeyA') keys.left = true;
+      if (code === 'ArrowRight' || code === 'KeyD') keys.right = true;
+
+      if (code === 'Space' || code === 'ArrowUp' || code === 'KeyW') {
+        if (!e.repeat) {
+          keys.jumpPressed = true;
+          if (gameState === 'GAMEOVER') {
+            startGame();
+            return;
+          }
+        }
+        keys.jumpHeld = true;
+        if (gameState === 'PLAYING') e.preventDefault();
+      }
+
+      if (code === 'ShiftLeft' || code === 'ShiftRight' || code === 'KeyK' || code === 'KeyX') {
+        if (!e.repeat) keys.dashPressed = true;
+      }
+
+      if (code === 'KeyE' || code === 'KeyJ') {
+        if (!e.repeat) keys.surgePressed = true;
+      }
+
+      if (code === 'Enter' && gameState === 'GAMEOVER') {
+        startGame();
+      }
+
+      if (code === 'KeyP' || code === 'Escape') {
+        if (gameState === 'PLAYING') pauseGame();
+        else if (gameState === 'PAUSED') resumeGame();
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      const code = e.code;
+      if (code === 'ArrowLeft' || code === 'KeyA') keys.left = false;
+      if (code === 'ArrowRight' || code === 'KeyD') keys.right = false;
+      if (code === 'Space' || code === 'ArrowUp' || code === 'KeyW') keys.jumpHeld = false;
+    });
+
+    // Virtual Touch Buttons
+    const touchBtns = document.querySelectorAll('.t-btn');
+    touchBtns.forEach((btn) => {
+      const action = btn.dataset.key;
+      const press = (ev) => {
+        ev.preventDefault();
+        sound.unlock();
+        btn.classList.add('pressed');
+        if (action === 'left') keys.left = true;
+        if (action === 'right') keys.right = true;
+        if (action === 'jump') {
+          keys.jumpPressed = true;
+          keys.jumpHeld = true;
+        }
+        if (action === 'dash') keys.dashPressed = true;
+        if (action === 'surge') keys.surgePressed = true;
+      };
+      const release = (ev) => {
+        ev.preventDefault();
+        btn.classList.remove('pressed');
+        if (action === 'left') keys.left = false;
+        if (action === 'right') keys.right = false;
+        if (action === 'jump') keys.jumpHeld = false;
+      };
+
+      btn.addEventListener('touchstart', press, { passive: false });
+      btn.addEventListener('touchend', release, { passive: false });
+      btn.addEventListener('touchcancel', release, { passive: false });
+      btn.addEventListener('mousedown', press);
+      btn.addEventListener('mouseup', release);
+      btn.addEventListener('mouseleave', release);
+    });
+
+    // ---------------------------------------------------------------------------
+    // 6. ARTICULATED PARKOUR PLAYER OBJECT (WITH SKINS, PERKS & SQUASH-STRETCH)
+    // ---------------------------------------------------------------------------
+    const player = {
+      x: LOGICAL_W / 2,
+      y: GROUND_Y,
+      w: 26,
+      h: 38,
+      hurtW: 16, // Forgiving 20% smaller inner hurtbox
+      hurtH: 28,
+      grazeRadius: 34, // Outer near-miss graze detection ring
+      vx: 0,
+      vy: 0,
+      facing: 1,
+      onGround: false,
+      wasOnGround: false,
+      inWater: false,
+      coyoteTimer: 0,
+      jumpBufferTimer: 0,
+      jumpsUsed: 0,
+      maxJumps: 2,
+      dashTimer: 0,
+      dashCooldown: 0,
+      dashDir: 1,
+      hearts: 3,
+      maxHearts: 3,
+      hasShield: false,
+      invulnTimer: 0,
+      oxygen: 4.5,
+      maxOxygen: 4.5,
+      runAnim: 0,
+      scaleX: 1,
+      scaleY: 1,
+      scarfPoints: [],
+
+      reset() {
+        this.x = LOGICAL_W / 2;
+        this.y = GROUND_Y;
+        this.vx = 0;
+        this.vy = 0;
+        this.facing = 1;
+        this.onGround = true;
+        this.wasOnGround = true;
+        this.inWater = false;
+        this.coyoteTimer = 0;
+        this.jumpBufferTimer = 0;
+        this.jumpsUsed = 0;
+        this.dashTimer = 0;
+        this.dashCooldown = 0;
+        this.hearts = 3;
+        this.invulnTimer = 0;
+        this.runAnim = 0;
+        this.scaleX = 1;
+        this.scaleY = 1;
+
+        // Apply Passive Perks
+        this.hasShield = (saveData.selectedPerk === 'magnet');
+        this.maxOxygen = (saveData.selectedPerk === 'oxygen') ? 7.0 : 4.5;
+        this.oxygen = this.maxOxygen;
+
+        this.scarfPoints = Array.from({ length: 6 }, (_, i) => ({
+          x: this.x - i * 5,
+          y: this.y - 28
+        }));
+      },
+
+      getDashMaxCooldown() {
+        return saveData.selectedPerk === 'jetpack' ? 0.595 : 0.85; // -30% with Jetpack perk
+      },
+
+      getHurtbox() {
+        return {
+          x: this.x - this.hurtW / 2,
+          y: this.y - this.hurtH - 2,
+          w: this.hurtW,
+          h: this.hurtH
+        };
+      },
+
+      getCenter() {
+        return { x: this.x, y: this.y - 19 };
+      }
+    };
+
+    // ---------------------------------------------------------------------------
+    // 7. HELPER FUNCTIONS: PARTICLES, SHAKE, FLOATING TEXT, SURGE & DAMAGE
+    // ---------------------------------------------------------------------------
+    function triggerShake(intensity, duration) {
+      if (!saveData.shake) return;
+      shakeIntensity = Math.max(shakeIntensity, intensity);
+      shakeTimer = Math.max(shakeTimer, duration);
+    }
+
+    function addFloatingText(x, y, text, color = '#ffffff') {
+      floatingTexts.push({
+        x,
+        y,
+        text,
+        color,
+        life: 1.1,
+        maxLife: 1.1
+      });
+    }
+
+    function spawnParticles(x, y, count, opts = {}) {
+      const {
+        color = '#ffffff',
+        speedMin = 40,
+        speedMax = 220,
+        angleMin = 0,
+        angleMax = Math.PI * 2,
+        sizeMin = 2,
+        sizeMax = 5,
+        lifeMin = 0.25,
+        lifeMax = 0.65,
+        gravity = 320
+      } = opts;
+
+      for (let i = 0; i < count; i++) {
+        const angle = angleMin + Math.random() * (angleMax - angleMin);
+        const speed = speedMin + Math.random() * (speedMax - speedMin);
+        particles.push({
+          x,
+          y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          size: sizeMin + Math.random() * (sizeMax - sizeMin),
+          life: lifeMin + Math.random() * (lifeMax - lifeMin),
+          maxLife: lifeMax,
+          color,
+          gravity
+        });
+      }
+    }
+
+    function triggerNearMiss(calloutText = null) {
+      if (player.invulnTimer > 0) return;
+      closeCalls++;
+      combo++;
+      if (combo > maxCombo) maxCombo = combo;
+      comboTimer = 4.6;
+
+      const pts = 150 * combo;
+      score += pts;
+      surgeCharge = Math.min(100, surgeCharge + 25);
+      hitStopTimer = 0.045;
+      sound.playCloseCall(combo);
+
+      const label = calloutText || `NÉ SÁT NÚT! x${combo} (+${pts})`;
+      addFloatingText(player.x, player.y - 46, label, '#4ade80');
+      spawnParticles(player.x, player.y - 20, 10, {
+        color: '#4ade80',
+        speedMin: 50,
+        speedMax: 160,
+        gravity: 0
+      });
+
+      if (closeCalls >= 10) {
+        unlockAchievement('graze_10');
+      }
+    }
+
+    function activateKineticSurge() {
+      if (surgeCharge < 100 || gameState !== 'PLAYING') return;
+
+      surgeCharge = 0;
+      surgeUsesThisRun++;
+      hitStopTimer = 0.06;
+      sound.playSurge();
+      triggerShake(15, 0.36);
+
+      const cx = player.x;
+      const cy = player.y - 18;
+      shockwaves.push({
+        x: cx,
+        y: cy,
+        radius: 18,
+        maxRadius: 460,
+        life: 0.42,
+        maxLife: 0.42
+      });
+
+      spawnParticles(cx, cy, 36, {
+        color: '#facc15',
+        speedMin: 120,
+        speedMax: 440,
+        sizeMax: 6,
+        gravity: 40
+      });
+
+      let clearedCount = 0;
+
+      // 1. Shatter nearby flying hazards & tidal debris
+      for (let i = hazards.length - 1; i >= 0; i--) {
+        const h = hazards[i];
+        if (Math.hypot(h.x - cx, h.y - cy) <= 450) {
+          spawnParticles(h.x, h.y, 12, { color: '#38bdf8', speedMax: 220 });
+          hazards.splice(i, 1);
+          clearedCount++;
+        }
+      }
+
+      // 2. Shatter nearby falling meteors
+      for (let i = meteors.length - 1; i >= 0; i--) {
+        const m = meteors[i];
+        if (Math.hypot(m.targetX - cx, m.targetY - cy) <= 450) {
+          spawnParticles(m.x, m.y, 14, { color: '#fb923c', speedMax: 240 });
+          meteors.splice(i, 1);
+          clearedCount++;
+        }
+      }
+
+      // 3. Dissipate nearby active tornadoes
+      for (let i = activeDisasters.length - 1; i >= 0; i--) {
+        const d = activeDisasters[i];
+        if (d.type === 'TORNADO' && Math.abs(d.x - cx) <= 480) {
+          spawnParticles(d.x, GROUND_Y - 180, 32, { color: '#c084fc', speedMax: 320, gravity: 0 });
+          activeDisasters.splice(i, 1);
+          disastersSurvived++;
+          clearedCount += 2;
+        }
+      }
+
+      // 4. Restore +50% Oxygen if underwater
+      if (player.oxygen < player.maxOxygen) {
+        player.oxygen = Math.min(player.maxOxygen, player.oxygen + player.maxOxygen * 0.5);
+      }
+
+      // 5. Spawn a temporary 3-second Energy Platform beneath player's feet if airborne
+      if (!player.onGround) {
+        energyPlatform = {
+          x: Math.max(30, Math.min(LOGICAL_W - 160, player.x - 65)),
+          y: Math.min(GROUND_Y - 18, player.y + 4),
+          w: 130,
+          timer: 3.0,
+          maxTimer: 3.0
+        };
+        player.vy = 0;
+        player.onGround = true;
+        player.jumpsUsed = 0;
+      }
+
+      const bonus = 250 + clearedCount * 200;
+      score += bonus;
+      addFloatingText(cx, cy - 34, `⚡ XUNG KÍCH ĐỊA CHẤN! +${bonus}`, '#fde047');
+
+      if (surgeUsesThisRun >= 3) {
+        unlockAchievement('surge_3');
+      }
+    }
+
+    function getHighestSafePillar() {
+      let best = null;
+      for (const p of pillars) {
+        if (p.sunkTimer > 0) continue;
+        if (!best || p.topY < best.topY) {
+          best = p;
+        }
+      }
+      return best;
+    }
+
+    function rescuePlayerToHighGround() {
+      const best = getHighestSafePillar();
+      if (best) {
+        player.x = best.x + best.w / 2;
+        player.y = best.topY - 4;
+        player.vy = -260;
+        player.vx = 0;
+        player.jumpsUsed = 0;
+      } else {
+        player.x = LOGICAL_W / 2;
+        player.y = 260;
+        player.vy = -220;
+        player.jumpsUsed = 0;
+      }
+    }
+
+    function damagePlayer(causeText, rescueToPillar = false) {
+      if (player.invulnTimer > 0 || gameState !== 'PLAYING') return;
+
+      // Shield absorbs 1 hit cleanly
+      if (player.hasShield) {
+        player.hasShield = false;
+        player.invulnTimer = 1.5;
+        sound.playHit();
+        triggerShake(8, 0.25);
+        addFloatingText(player.x, player.y - 48, 'KHIÊN CHẮN ĐÒN!', '#38bdf8');
+        spawnParticles(player.x, player.y - 20, 22, { color: '#38bdf8', speedMax: 280 });
+        if (rescueToPillar) rescuePlayerToHighGround();
+        return;
+      }
+
+      player.hearts -= 1;
+      player.invulnTimer = 1.8;
+      noDamageTimer = 0; // Reset untouchable streak
+      combo = 1;
+      comboTimer = 0;
+      hitStopTimer = 0.05;
+      sound.playHit();
+      triggerShake(13, 0.35);
+
+      spawnParticles(player.x, player.y - 20, 28, {
+        color: '#f43f5e',
+        speedMin: 80,
+        speedMax: 320,
+        lifeMax: 0.7
+      });
+
+      if (player.hearts <= 0) {
+        player.hearts = 0;
+        lastCauseOfDeath = causeText;
+        endGame();
+        return;
+      }
+
+      addFloatingText(player.x, player.y - 52, '-1 ❤️ MẤT COMBO!', '#fb7185');
+
+      if (rescueToPillar) {
+        player.invulnTimer = 2.1;
+        rescuePlayerToHighGround();
+      } else {
+        player.vy = -310;
+      }
+    }
+
+    // ---------------------------------------------------------------------------
+    // 8. NATURAL PARKOUR STONE PILLARS GENERATOR (GUARANTEED REACHABLE)
+    // ---------------------------------------------------------------------------
+    function spawnNaturalPillars(totalLife) {
+      pillars = [];
+      const count = 6;
+      const margin = 110;
+      const usableW = LOGICAL_W - margin * 2;
+      const stepX = usableW / (count - 1);
+
+      const heightProfiles = [
+        [155, 255, 330, 220, 315, 165],
+        [165, 310, 210, 335, 245, 150],
+        [145, 235, 325, 305, 200, 155]
+      ];
+      const chosen = heightProfiles[Math.floor(Math.random() * heightProfiles.length)];
+
+      for (let i = 0; i < count; i++) {
+        const jitterX = (Math.random() - 0.5) * 32;
+        const w = 104 + Math.random() * 26;
+        const cx = margin + i * stepX + jitterX;
+        const targetH = chosen[i] + (Math.random() - 0.5) * 16;
+
+        pillars.push({
+          x: Math.max(40, Math.min(LOGICAL_W - 40 - w, cx - w / 2)),
+          w,
+          currentH: 0,
+          targetH,
+          topY: GROUND_Y,
+          state: 'RISING',
+          lifeTimer: totalLife,
+          crackTimer: 0,
+          steppedOn: false,
+          sunkTimer: 0
+        });
+      }
+    }
+
+    function updatePillars(dt) {
+      const sinkLimit = DIFF_CONFIG[difficulty].pillarSinkTime;
+
+      for (let i = pillars.length - 1; i >= 0; i--) {
+        const p = pillars[i];
+        p.lifeTimer -= dt;
+
+        if (p.lifeTimer <= 0 && p.state !== 'RETREATING') {
+          p.state = 'RETREATING';
+        }
+
+        // Super Hard mode: pillars crack and temporarily sink 4.5s after stepped on, then rise again
+        if (difficulty === 'hard' && p.steppedOn && p.state === 'ACTIVE') {
+          if (p.sunkTimer > 0) {
+            p.sunkTimer -= dt;
+            if (p.sunkTimer <= 0) {
+              p.steppedOn = false;
+              p.crackTimer = 0;
+              p.state = 'RISING';
+            }
+          } else {
+            p.crackTimer += dt;
+            if (Math.random() < 0.25) {
+              spawnParticles(p.x + Math.random() * p.w, p.topY + 6, 1, {
+                color: '#94a3b8',
+                speedMin: 10,
+                speedMax: 45,
+                angleMin: Math.PI * 0.3,
+                angleMax: Math.PI * 0.7,
+                sizeMax: 3,
+                lifeMax: 0.4
+              });
+            }
+            if (p.crackTimer >= sinkLimit) {
+              p.sunkTimer = 2.2;
+              triggerShake(4, 0.15);
+              spawnParticles(p.x + p.w / 2, p.topY + 12, 14, { color: '#64748b', speedMax: 140 });
+            }
+          }
+        }
+
+        let desiredH = p.targetH;
+        if (p.state === 'RETREATING' || p.sunkTimer > 0) {
+          desiredH = 0;
+        }
+
+        const speed = p.state === 'RISING' ? 285 : 245;
+        if (p.currentH < desiredH) {
+          p.currentH = Math.min(desiredH, p.currentH + speed * dt);
+          if (p.currentH >= desiredH && p.state === 'RISING') {
+            p.state = 'ACTIVE';
+          }
+        } else if (p.currentH > desiredH) {
+          p.currentH = Math.max(desiredH, p.currentH - speed * dt);
+        }
+
+        p.topY = GROUND_Y - p.currentH;
+
+        if (p.state === 'RETREATING' && p.currentH <= 1) {
+          pillars.splice(i, 1);
+        }
+      }
+
+      if (energyPlatform) {
+        energyPlatform.timer -= dt;
+        if (energyPlatform.timer <= 0) {
+          energyPlatform = null;
+        }
+      }
+    }
+
+    // ---------------------------------------------------------------------------
+    // 9. FIVE NATURAL DISASTERS + MUTATIONS & AI DIRECTOR
+    // ---------------------------------------------------------------------------
+    const DISASTER_META = {
+      WINDSTORM: { name: 'CƠN GIÓ BÃO', icon: '🌪️', color: '#38bdf8' },
+      METEOR: { name: 'MƯA THIÊN THẠCH', icon: '☄️', color: '#fb923c' },
+      LAVA: { name: 'DUNG NHAM DÂNG TRÀO', icon: '🌋', color: '#f43f5e' },
+      TIDAL: { name: 'THỦY TRIỀU KÉO ĐẾN', icon: '🌊', color: '#0ea5e9' },
+      TORNADO: { name: 'LỐC XOÁY & BÃO SÉT', icon: '🌀', color: '#a855f7' }
+    };
+
+    function spawnDisaster(type) {
+      const cfg = DIFF_CONFIG[difficulty];
+      const levelScale = 1 + Math.min(elapsedTime / 85, 0.65);
+
+      sound.playWarning();
+      triggerShake(4, 0.25);
+
+      if (type === 'WINDSTORM') {
+        const dir = Math.random() < 0.5 ? 1 : -1;
+        activeDisasters.push({
+          type: 'WINDSTORM',
+          phase: 'TELEGRAPH',
+          timer: cfg.telegraphStandard,
+          duration: 10.5,
+          dir,
+          spawnTimer: 0.15,
+          levelScale
+        });
+      } else if (type === 'METEOR') {
+        activeDisasters.push({
+          type: 'METEOR',
+          phase: 'TELEGRAPH',
+          timer: cfg.telegraphStandard * 0.72,
+          duration: 9.5,
+          spawnTimer: 0.1,
+          levelScale
+        });
+      } else if (type === 'LAVA') {
+        const duration = 12.5;
+        spawnNaturalPillars(cfg.telegraphTerrain + duration + 1.0);
+        activeDisasters.push({
+          type: 'LAVA',
+          phase: 'TELEGRAPH',
+          timer: cfg.telegraphTerrain,
+          duration,
+          peakY: 455
+        });
+      } else if (type === 'TIDAL') {
+        const duration = 13.5;
+        const flowDir = Math.random() < 0.5 ? 1 : -1;
+        spawnNaturalPillars(cfg.telegraphTerrain + duration + 1.0);
+        activeDisasters.push({
+          type: 'TIDAL',
+          phase: 'TELEGRAPH',
+          timer: cfg.telegraphTerrain,
+          duration,
+          flowDir,
+          peakY: 395,
+          debrisTimer: 0.75,
+          levelScale
+        });
+      } else if (type === 'TORNADO') {
+        const dir = Math.random() < 0.5 ? 1 : -1;
+        const startX = dir === 1 ? 65 : LOGICAL_W - 65;
+        activeDisasters.push({
+          type: 'TORNADO',
+          phase: 'TELEGRAPH',
+          timer: cfg.telegraphStandard,
+          duration: 12.0,
+          x: startX,
+          dir,
+          speed: (145 + Math.min(elapsedTime * 1.1, 110)) * (difficulty === 'hard' ? 1.25 : 1),
+          debrisTimer: 1.35,
+          lightningTimer: 1.8,
+          levelScale
+        });
+      }
+    }
+
+    function updateAIDirector(dt) {
+      const cfg = DIFF_CONFIG[difficulty];
+      director.nextSpawnTimer -= dt;
+
+      // Supply drops (Spawn Heart ONLY when at 1 life, otherwise Shield)
+      director.supplyTimer -= dt;
+      if (director.supplyTimer <= 0) {
+        director.supplyTimer = 16 + Math.random() * 7;
+        const dropType = (player.hearts === 1) ? 'HEART' : 'SHIELD';
+        if (!(dropType === 'SHIELD' && player.hasShield)) {
+          supplyDrops.push({
+            x: 180 + Math.random() * (LOGICAL_W - 360),
+            y: -25,
+            vy: 88,
+            type: dropType,
+            sway: Math.random() * Math.PI * 2
+          });
+        }
+      }
+
+      if (director.nextSpawnTimer > 0) return;
+
+      const maxSimultaneous = elapsedTime >= cfg.comboStartTime ? cfg.maxConcurrent : 1;
+      if (activeDisasters.length >= maxSimultaneous) {
+        director.nextSpawnTimer = 1.4;
+        return;
+      }
+
+      const activeTypes = activeDisasters.map((d) => d.type);
+      let pool = ['WINDSTORM', 'METEOR', 'LAVA', 'TIDAL', 'TORNADO'];
+
+      if (elapsedTime < 15) {
+        pool = ['WINDSTORM', 'METEOR'];
+      }
+
+      pool = pool.filter((t) => !activeTypes.includes(t));
+      if (activeTypes.includes('LAVA')) pool = pool.filter((t) => t !== 'TIDAL');
+      if (activeTypes.includes('TIDAL')) pool = pool.filter((t) => t !== 'LAVA');
+      if (pool.length > 1 && director.lastTypes.length > 0) {
+        const last = director.lastTypes[director.lastTypes.length - 1];
+        pool = pool.filter((t) => t !== last);
+      }
+
+      if (pool.length > 0) {
+        const chosen = pool[Math.floor(Math.random() * pool.length)];
+        spawnDisaster(chosen);
+        director.lastTypes.push(chosen);
+        if (director.lastTypes.length > 2) director.lastTypes.shift();
+      }
+
+      const baseGap = difficulty === 'hard' ? 5.6 : 7.3;
+      const reduction = Math.min(elapsedTime / 35, 2.3);
+      director.nextSpawnTimer = Math.max(3.5, baseGap - reduction);
+    }
+
+    function updateDisasters(dt) {
+      const cfg = DIFF_CONFIG[difficulty];
+      let lavaTarget = GROUND_Y + 45;
+      let tidalTarget = GROUND_Y + 45;
+      lavaState.active = false;
+      tidalState.active = false;
+
+      for (let i = activeDisasters.length - 1; i >= 0; i--) {
+        const d = activeDisasters[i];
+
+        if (d.phase === 'TELEGRAPH') {
+          d.timer -= dt;
+          if (d.timer <= 0) {
+            d.phase = 'ACTIVE';
+            if (d.type === 'TIDAL') sound.playSplash();
+          }
+          continue;
+        }
+
+        d.duration -= dt;
+        if (d.duration <= 0) {
+          activeDisasters.splice(i, 1);
+          disastersSurvived++;
+          score += 300;
+          addFloatingText(player.x, player.y - 62, 'VƯỢT QUA THIÊN TAI! +300', '#4ade80');
+          continue;
+        }
+
+        // 1. WINDSTORM (Sheet Metal + Boulders + Mutated Ricochet Boulders)
+        if (d.type === 'WINDSTORM') {
+          d.spawnTimer -= dt;
+          if (Math.random() < 0.45) {
+            particles.push({
+              x: d.dir === 1 ? -20 : LOGICAL_W + 20,
+              y: 80 + Math.random() * (GROUND_Y - 100),
+              vx: d.dir * (760 + Math.random() * 340),
+              vy: (Math.random() - 0.5) * 30,
+              size: 2,
+              life: 1.4,
+              maxLife: 1.4,
+              color: 'rgba(226, 232, 240, 0.45)',
+              gravity: 0
+            });
+          }
+
+          if (d.spawnTimer <= 0) {
+            const interval = (difficulty === 'hard' ? 0.66 : 0.90) / d.levelScale;
+            d.spawnTimer = interval + Math.random() * 0.24;
+
+            const roll = Math.random();
+            const lanes = [GROUND_Y - 26, GROUND_Y - 78, GROUND_Y - 145, GROUND_Y - 230, GROUND_Y - 310];
+            const spawnY = lanes[Math.floor(Math.random() * lanes.length)];
+            const startX = d.dir === 1 ? -70 : LOGICAL_W + 70;
+
+            if (roll < 0.44) {
+              // Corrugated Sheet Metal
+              const spd = (470 + Math.random() * 140) * cfg.projSpeedMult * d.levelScale;
+              hazards.push({
+                kind: 'METAL_SHEET',
+                x: startX,
+                y: spawnY,
+                baseY: spawnY,
+                vx: d.dir * spd,
+                vy: 0,
+                w: 66,
+                h: 12,
+                rot: 0,
+                rotSpeed: d.dir * 8.5,
+                phase: Math.random() * Math.PI * 2,
+                wavy: cfg.wavySheet,
+                cause: 'Bị tấm mái tôn sắc lẹm cắt ngang',
+                closeCalled: false
+              });
+            } else if (roll < 0.72 && elapsedTime > 12) {
+              // MUTATION: Ricochet Boulder that bounces off ground & stone pillars
+              const spd = (340 + Math.random() * 110) * cfg.projSpeedMult;
+              hazards.push({
+                kind: 'RICOCHET_ROCK',
+                x: startX,
+                y: 160 + Math.random() * 140,
+                vx: d.dir * spd,
+                vy: -80,
+                r: 17,
+                rot: 0,
+                rotSpeed: d.dir * 8,
+                cause: 'Trúng tảng đá nảy biến dị trong bão',
+                closeCalled: false
+              });
+            } else {
+              // Standard Wind Boulder
+              const radius = 16 + Math.random() * 10;
+              const spd = (380 + Math.random() * 140) * cfg.projSpeedMult * d.levelScale;
+              hazards.push({
+                kind: 'WIND_ROCK',
+                x: startX,
+                y: spawnY,
+                vx: d.dir * spd,
+                vy: (Math.random() - 0.5) * 45,
+                r: radius,
+                rot: Math.random() * 6,
+                rotSpeed: d.dir * 6,
+                cause: 'Bị tảng đá bão thổi nghiền nát',
+                closeCalled: false
+              });
+            }
+          }
+        }
+
+        // 2. METEOR SHOWER
+        if (d.type === 'METEOR') {
+          d.spawnTimer -= dt;
+          if (d.spawnTimer <= 0) {
+            const interval = (difficulty === 'hard' ? 0.70 : 1.02) / d.levelScale;
+            d.spawnTimer = interval + Math.random() * 0.24;
+
+            let targetX = Math.random() < 0.45
+              ? player.x + (Math.random() - 0.5) * 260
+              : 90 + Math.random() * (LOGICAL_W - 180);
+            targetX = Math.max(70, Math.min(LOGICAL_W - 70, targetX));
+
+            let targetY = GROUND_Y;
+            for (const p of pillars) {
+              if (p.sunkTimer <= 0 && targetX >= p.x && targetX <= p.x + p.w) {
+                targetY = Math.min(targetY, p.topY);
+              }
+            }
+
+            const slantOffset = (Math.random() - 0.5) * 240;
+            const startX = targetX + slantOffset;
+            const startY = -60;
+            const warnTime = cfg.telegraphStandard;
+
+            meteors.push({
+              startX,
+              startY,
+              targetX,
+              targetY,
+              x: startX,
+              y: startY,
+              warnTimer: warnTime,
+              maxWarn: warnTime,
+              falling: false,
+              fallProgress: 0,
+              blastRadius: difficulty === 'hard' ? 86 : 74
+            });
+          }
+        }
+
+        // 3. RISING LAVA
+        if (d.type === 'LAVA') {
+          lavaState.active = true;
+          lavaTarget = d.peakY;
+        }
+
+        // 4. TIDAL SURGE
+        if (d.type === 'TIDAL') {
+          tidalState.active = true;
+          tidalState.flowDir = d.flowDir;
+          tidalTarget = d.peakY;
+
+          d.debrisTimer -= dt;
+          if (d.debrisTimer <= 0) {
+            d.debrisTimer = (difficulty === 'hard' ? 0.85 : 1.15) / d.levelScale;
+            const waterDepth = GROUND_Y - tidalState.y;
+            if (waterDepth > 40) {
+              const spawnY = tidalState.y + 24 + Math.random() * Math.max(20, waterDepth - 48);
+              const startX = d.flowDir === 1 ? -50 : LOGICAL_W + 50;
+              const spd = (260 + Math.random() * 120) * cfg.projSpeedMult;
+              const isSpikyMine = Math.random() < 0.5;
+
+              hazards.push({
+                kind: isSpikyMine ? 'SEA_MINE' : 'DRIFTWOOD',
+                x: startX,
+                y: spawnY,
+                baseY: spawnY,
+                vx: d.flowDir * spd,
+                vy: 0,
+                r: isSpikyMine ? 18 : 15,
+                w: 58,
+                h: 16,
+                phase: Math.random() * 6,
+                cause: 'Va phải thức thể nguy hiểm trong dòng thủy triều',
+                closeCalled: false
+              });
+            }
+          }
+        }
+
+        // 5. TORNADO + LIGHTNING MUTATION
+        if (d.type === 'TORNADO') {
+          d.x += d.dir * d.speed * dt;
+          if (d.x > LOGICAL_W - 85) {
+            d.x = LOGICAL_W - 85;
+            d.dir = -1;
+          } else if (d.x < 85) {
+            d.x = 85;
+            d.dir = 1;
+          }
+
+          const dx = d.x - player.x;
+          const dist = Math.abs(dx);
+          const pullRange = 540;
+          if (dist < pullRange && player.dashTimer <= 0) {
+            const strength = (1 - dist / pullRange) * 540 * cfg.tornadoPullMult * d.levelScale;
+            player.vx += Math.sign(dx) * strength * dt * 3.1;
+          }
+
+          if (dist < 32 && player.y > GROUND_Y - 490 && player.dashTimer <= 0) {
+            damagePlayer('Bị cuốn vào tâm lốc xoáy', false);
+          }
+
+          // Fling debris
+          d.debrisTimer -= dt;
+          if (d.debrisTimer <= 0) {
+            d.debrisTimer = difficulty === 'hard' ? 1.15 : 1.55;
+            const throwDir = player.x >= d.x ? 1 : -1;
+            const throwY = GROUND_Y - (40 + Math.random() * 210);
+            hazards.push({
+              kind: 'WIND_ROCK',
+              x: d.x,
+              y: throwY,
+              vx: throwDir * (330 + Math.random() * 110) * cfg.projSpeedMult,
+              vy: -90 - Math.random() * 80,
+              r: 15,
+              rot: 0,
+              rotSpeed: throwDir * 7,
+              cause: 'Trúng mảnh vỡ bị lốc xoáy quăng ra',
+              closeCalled: false
+            });
+          }
+
+          // MUTATION: Vertical Telegraphing Lightning Strikes
+          d.lightningTimer -= dt;
+          if (d.lightningTimer <= 0) {
+            d.lightningTimer = difficulty === 'hard' ? 2.1 : 2.9;
+            const strikeX = Math.max(80, Math.min(LOGICAL_W - 80, player.x + (Math.random() - 0.5) * 320));
+            const warnDur = difficulty === 'hard' ? 0.95 : 1.35;
+            lightningStrikes.push({
+              x: strikeX,
+              warnTimer: warnDur,
+              maxWarn: warnDur,
+              flashTimer: 0,
+              points: []
+            });
+          }
+        }
+      }
+
+      // Smoothly animate Lava & Tidal water levels
+      const lavaSpeed = lavaState.active ? 95 : 150;
+      if (lavaState.y > lavaTarget) {
+        lavaState.y = Math.max(lavaTarget, lavaState.y - lavaSpeed * dt);
+      } else if (lavaState.y < lavaTarget) {
+        lavaState.y = Math.min(lavaTarget, lavaState.y + lavaSpeed * dt);
+      }
+
+      const tidalSpeed = tidalState.active ? 190 : 170;
+      if (tidalState.y > tidalTarget) {
+        tidalState.y = Math.max(tidalTarget, tidalState.y - tidalSpeed * dt);
+      } else if (tidalState.y < tidalTarget) {
+        tidalState.y = Math.min(tidalTarget, tidalState.y + tidalSpeed * dt);
+      }
+      tidalState.wavePhase += dt * 5.5;
+      if (tidalState.electrifiedTimer > 0) {
+        tidalState.electrifiedTimer = Math.max(0, tidalState.electrifiedTimer - dt);
+      }
+    }
+
+    // ---------------------------------------------------------------------------
+    // 10. PLAYER PHYSICS, LANDING LASER, COLLISIONS & FLUID OXYGEN
+    // ---------------------------------------------------------------------------
+    function rectsOverlap(a, b) {
+      return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    }
+
+    function circleRectOverlap(cx, cy, cr, rect) {
+      const closestX = Math.max(rect.x, Math.min(cx, rect.x + rect.w));
+      const closestY = Math.max(rect.y, Math.min(cy, rect.y + rect.h));
+      const dx = cx - closestX;
+      const dy = cy - closestY;
+      return (dx * dx + dy * dy) < (cr * cr);
+    }
+
+    function getLandingProjectionY() {
+      let bestY = GROUND_Y;
+      for (const p of pillars) {
+        if (p.sunkTimer > 0 || p.currentH < 12) continue;
+        if (player.x >= p.x && player.x <= p.x + p.w && p.topY >= player.y - 2) {
+          bestY = Math.min(bestY, p.topY);
+        }
+      }
+      if (energyPlatform && player.x >= energyPlatform.x && player.x <= energyPlatform.x + energyPlatform.w && energyPlatform.y >= player.y - 2) {
+        bestY = Math.min(bestY, energyPlatform.y);
+      }
+      return bestY;
+    }
+
+    function updatePlayer(dt) {
+      // Passive survival score & surge generation
+      const comboMult = 1 + (combo - 1) * 0.25;
+      score += 100 * comboMult * dt;
+      surgeCharge = Math.min(100, surgeCharge + 5 * dt);
+      noDamageTimer += dt;
+
+      if (elapsedTime >= 60) unlockAchievement('survive_60');
+      if (difficulty === 'hard' && elapsedTime >= 45) unlockAchievement('super_hard_45');
+      if (noDamageTimer >= 40) unlockAchievement('untouchable_40');
+
+      if (combo > 1) {
+        comboTimer -= dt;
+        if (comboTimer <= 0) {
+          combo = 1;
+        }
+      }
+
+      if (player.invulnTimer > 0) player.invulnTimer -= dt;
+      if (player.dashCooldown > 0) player.dashCooldown -= dt;
+
+      // Spring Squash-and-Stretch back to (1, 1)
+      player.scaleX += (1 - player.scaleX) * Math.min(1, dt * 16);
+      player.scaleY += (1 - player.scaleY) * Math.min(1, dt * 16);
+
+      // Kinetic Surge Trigger (E / J / Touch)
+      if (keys.surgePressed) {
+        keys.surgePressed = false;
+        activateKineticSurge();
+      }
+
+      // Check if submerged in Tidal Surge
+      const waterSurface = tidalState.y;
+      player.inWater = (waterSurface < GROUND_Y - 10) && (player.y > waterSurface + 10);
+
+      // Electrified Water Hazard check
+      if (player.inWater && tidalState.electrifiedTimer > 0 && player.dashTimer <= 0) {
+        damagePlayer('Bị điện giật trên mặt thủy triều nhiễm sét', true);
+      }
+
+      // Oxygen handling in Tidal Surge
+      const headY = player.y - player.h + 6;
+      const isHeadUnderwater = (waterSurface < GROUND_Y - 10) && (headY > waterSurface);
+
+      if (isHeadUnderwater) {
+        wasSubmerged = true;
+        player.oxygen -= dt;
+        lowestUnderwaterOxygen = Math.min(lowestUnderwaterOxygen, player.oxygen);
+
+        if (Math.random() < 0.25) {
+          spawnParticles(player.x + (Math.random() - 0.5) * 10, headY, 1, {
+            color: '#bae6fd',
+            speedMin: 15,
+            speedMax: 45,
+            angleMin: -Math.PI * 0.7,
+            angleMax: -Math.PI * 0.3,
+            gravity: -60,
+            sizeMax: 3.5
+          });
+        }
+        if (player.oxygen <= 0) {
+          player.oxygen = player.maxOxygen;
+          wasSubmerged = false;
+          lowestUnderwaterOxygen = 99;
+          damagePlayer('Chết ngạt dưới đáy thủy triều', true);
+        }
+      } else {
+        // Check Clutch Oxygen Achievement when surfacing!
+        if (wasSubmerged && lowestUnderwaterOxygen > 0 && lowestUnderwaterOxygen < 0.5) {
+          unlockAchievement('clutch_oxygen');
+        }
+        wasSubmerged = false;
+        lowestUnderwaterOxygen = 99;
+        player.oxygen = Math.min(player.maxOxygen, player.oxygen + dt * 2.8);
+      }
+
+      // Lava contact check
+      if (lavaState.y < GROUND_Y - 6 && player.y >= lavaState.y + 4) {
+        spawnParticles(player.x, lavaState.y, 24, {
+          color: '#fb923c',
+          speedMin: 90,
+          speedMax: 300,
+          angleMin: -Math.PI,
+          angleMax: 0
+        });
+        damagePlayer('Rơi xuống biển dung nham sôi sục', true);
+      }
+
+      // Coyote & Jump Buffer timers
+      if (player.onGround) {
+        player.coyoteTimer = 0.12;
+        player.jumpsUsed = 0;
+      } else {
+        player.coyoteTimer = Math.max(0, player.coyoteTimer - dt);
+      }
+
+      if (keys.jumpPressed) {
+        player.jumpBufferTimer = 0.12;
+        keys.jumpPressed = false;
+      } else {
+        player.jumpBufferTimer = Math.max(0, player.jumpBufferTimer - dt);
+      }
+
+      // Dash trigger
+      if (keys.dashPressed) {
+        keys.dashPressed = false;
+        if (player.dashCooldown <= 0 && player.dashTimer <= 0) {
+          player.dashTimer = 0.18;
+          player.dashCooldown = player.getDashMaxCooldown();
+          player.dashDir = keys.left ? -1 : (keys.right ? 1 : player.facing);
+          player.facing = player.dashDir;
+          player.scaleX = 1.32;
+          player.scaleY = 0.76;
+          sound.playDash();
+          spawnParticles(player.x, player.y - 18, 12, {
+            color: SKINS[saveData.selectedSkin].scarf,
+            speedMin: 50,
+            speedMax: 160,
+            gravity: 0
+          });
+        }
+      }
+
+      // Movement & Dash execution
+      if (player.dashTimer > 0) {
+        player.dashTimer -= dt;
+        player.vx = player.dashDir * 860;
+        player.vy = 0;
+        afterimages.push({
+          x: player.x,
+          y: player.y,
+          life: 0.22,
+          maxLife: 0.22
+        });
+      } else {
+        const moveInput = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+        if (moveInput !== 0) player.facing = moveInput;
+
+        const swimBonus = saveData.selectedPerk === 'oxygen' ? 1.35 : 1.0;
+        const maxSpeed = player.inWater ? 275 * swimBonus : 380;
+        const accel = player.onGround ? 2850 : (player.inWater ? 1500 * swimBonus : 2150);
+        const friction = player.onGround ? 2450 : (player.inWater ? 900 : 850);
+
+        if (moveInput !== 0) {
+          player.vx += moveInput * accel * dt;
+          if (Math.abs(player.vx) > maxSpeed) {
+            player.vx = player.vx * 0.88 + moveInput * maxSpeed * 0.12;
+          }
+        } else {
+          if (Math.abs(player.vx) <= friction * dt) {
+            player.vx = 0;
+          } else {
+            player.vx -= Math.sign(player.vx) * friction * dt;
+          }
+        }
+
+        if (player.inWater && tidalState.active) {
+          player.vx += tidalState.flowDir * 145 * dt;
+        }
+
+        // Jump / Double Jump / Swim upward
+        const doubleJumpMult = saveData.selectedPerk === 'jetpack' ? 1.12 : 1.0;
+        if (player.jumpBufferTimer > 0) {
+          if (player.inWater) {
+            player.vy = -370 * swimBonus;
+            player.jumpBufferTimer = 0;
+            player.scaleX = 0.82;
+            player.scaleY = 1.22;
+            sound.playJump(false);
+            spawnParticles(player.x, player.y - 8, 6, { color: '#7dd3fc', speedMax: 110, gravity: 40 });
+          } else if (player.coyoteTimer > 0) {
+            player.vy = -565;
+            player.onGround = false;
+            player.coyoteTimer = 0;
+            player.jumpBufferTimer = 0;
+            player.jumpsUsed = 1;
+            player.scaleX = 0.76;
+            player.scaleY = 1.28;
+            sound.playJump(false);
+            spawnParticles(player.x, player.y, 8, {
+              color: '#cbd5e1',
+              speedMin: 30,
+              speedMax: 120,
+              angleMin: -Math.PI,
+              angleMax: 0,
+              gravity: 120
+            });
+          } else if (player.jumpsUsed < player.maxJumps) {
+            player.vy = -515 * doubleJumpMult;
+            player.jumpBufferTimer = 0;
+            player.jumpsUsed++;
+            player.scaleX = 0.74;
+            player.scaleY = 1.3;
+            sound.playJump(true);
+            spawnParticles(player.x, player.y, 14, {
+              color: SKINS[saveData.selectedSkin].scarf,
+              speedMin: 50,
+              speedMax: 160,
+              angleMin: 0,
+              angleMax: Math.PI,
+              gravity: 40
+            });
+          }
+        }
+
+        if (!keys.jumpHeld && player.vy < -210 && !player.inWater) {
+          player.vy += 1650 * dt;
+        }
+
+        const grav = player.inWater ? 520 : 1480;
+        const maxFall = player.inWater ? 230 : 880;
+        player.vy = Math.min(maxFall, player.vy + grav * dt);
+      }
+
+      const prevY = player.y;
+      player.wasOnGround = player.onGround;
+      player.x += player.vx * dt;
+      player.y += player.vy * dt;
+
+      // Arena horizontal boundaries
+      const halfW = player.w / 2;
+      if (player.x < halfW + 12) {
+        player.x = halfW + 12;
+        player.vx = 0;
+      } else if (player.x > LOGICAL_W - halfW - 12) {
+        player.x = LOGICAL_W - halfW - 12;
+        player.vx = 0;
+      }
+
+      // Ground, Stone Pillars & Temporary Surge Energy Platform Landing
+      player.onGround = false;
+
+      if (player.y >= GROUND_Y) {
+        player.y = GROUND_Y;
+        player.vy = 0;
+        player.onGround = true;
+      } else if (player.vy >= 0) {
+        // Check Temporary Energy Platform first
+        if (energyPlatform) {
+          const withinEP = (player.x + halfW - 4 >= energyPlatform.x) && (player.x - halfW + 4 <= energyPlatform.x + energyPlatform.w);
+          const crossedEP = (prevY <= energyPlatform.y + 10) && (player.y >= energyPlatform.y);
+          if (withinEP && crossedEP) {
+            player.y = energyPlatform.y;
+            player.vy = 0;
+            player.onGround = true;
+          }
+        }
+
+        // Check Stone Pillars
+        if (!player.onGround) {
+          for (const p of pillars) {
+            if (p.sunkTimer > 0 || p.currentH < 12) continue;
+            const withinX = (player.x + halfW - 4 >= p.x) && (player.x - halfW + 4 <= p.x + p.w);
+            const crossedTop = (prevY <= p.topY + 10) && (player.y >= p.topY);
+            if (withinX && crossedTop) {
+              player.y = p.topY;
+              player.vy = 0;
+              player.onGround = true;
+              p.steppedOn = true;
+              break;
+            }
+          }
+        }
+      }
+
+      // Landing Squash Impact
+      if (player.onGround && !player.wasOnGround) {
+        player.scaleX = 1.3;
+        player.scaleY = 0.74;
+        spawnParticles(player.x, player.y, 6, {
+          color: '#94a3b8',
+          speedMin: 20,
+          speedMax: 90,
+          angleMin: -Math.PI,
+          angleMax: 0,
+          sizeMax: 3,
+          lifeMax: 0.35
+        });
+      }
+
+      // Run animation & dynamic wind-blown scarf update
+      if (player.onGround && Math.abs(player.vx) > 20) {
+        player.runAnim += dt * (Math.abs(player.vx) / 24);
+      } else {
+        player.runAnim = 0;
+      }
+
+      const anchorX = player.x - player.facing * 4;
+      const anchorY = player.y - 29 * player.scaleY;
+      if (player.scarfPoints.length > 0) {
+        player.scarfPoints[0].x = anchorX;
+        player.scarfPoints[0].y = anchorY;
+        const ambientWind = activeDisasters.some((d) => d.type === 'WINDSTORM' || d.type === 'TORNADO') ? 95 : 22;
+        for (let i = 1; i < player.scarfPoints.length; i++) {
+          const prev = player.scarfPoints[i - 1];
+          const curr = player.scarfPoints[i];
+          curr.x += (-player.facing * ambientWind - player.vx * 0.25) * dt;
+          curr.y += (Math.sin(elapsedTime * 11 + i) * 32 + 18) * dt;
+          const dx = curr.x - prev.x;
+          const dy = curr.y - prev.y;
+          const dist = Math.hypot(dx, dy) || 1;
+          const maxSeg = 5.5;
+          if (dist > maxSeg) {
+            curr.x = prev.x + (dx / dist) * maxSeg;
+            curr.y = prev.y + (dy / dist) * maxSeg;
+          }
+        }
+      }
+    }
+
+    // ---------------------------------------------------------------------------
+    // 11. HAZARDS, METEORS, LIGHTNING, EXPLOSIONS & SUPPLY DROPS UPDATE
+    // ---------------------------------------------------------------------------
+    function updateEntities(dt) {
+      const hurtbox = player.getHurtbox();
+      const pCenter = player.getCenter();
+      const isPhasing = player.dashTimer > 0;
+
+      // 1. Flying Hazards, Ricochet Boulders & Tidal Debris
+      for (let i = hazards.length - 1; i >= 0; i--) {
+        const h = hazards[i];
+        h.x += h.vx * dt;
+        h.y += h.vy * dt;
+
+        if (h.kind === 'METAL_SHEET') {
+          h.rot += h.rotSpeed * dt;
+          if (h.wavy) {
+            h.phase += dt * 4.5;
+            h.y = h.baseY + Math.sin(h.phase) * 44;
+          }
+        } else if (h.kind === 'WIND_ROCK') {
+          h.rot += h.rotSpeed * dt;
+          h.vy += 120 * dt;
+        } else if (h.kind === 'RICOCHET_ROCK') {
+          h.rot += h.rotSpeed * dt;
+          h.vy += 760 * dt;
+          // Bounce off ground
+          if (h.y + h.r >= GROUND_Y) {
+            h.y = GROUND_Y - h.r;
+            h.vy = -440;
+            spawnParticles(h.x, GROUND_Y, 8, { color: '#f59e0b', speedMax: 130 });
+          }
+          // Bounce off active stone pillars
+          for (const p of pillars) {
+            if (p.sunkTimer <= 0 && p.currentH > 12) {
+              if (h.x >= p.x && h.x <= p.x + p.w && h.y + h.r >= p.topY && h.y - h.r <= p.topY + 18 && h.vy > 0) {
+                h.y = p.topY - h.r;
+                h.vy = -410;
+                spawnParticles(h.x, p.topY, 8, { color: '#f59e0b', speedMax: 130 });
+              }
+            }
+          }
+        } else if (h.kind === 'SEA_MINE' || h.kind === 'DRIFTWOOD') {
+          h.phase += dt * 5;
+          h.y = h.baseY + Math.sin(h.phase) * 10;
+          if (!tidalState.active && tidalState.y > GROUND_Y) {
+            hazards.splice(i, 1);
+            continue;
+          }
+        }
+
+        if (h.x < -140 || h.x > LOGICAL_W + 140 || h.y > GROUND_Y + 60) {
+          hazards.splice(i, 1);
+          continue;
+        }
+
+        let hit = false;
+        let nearMiss = false;
+
+        if (h.kind === 'METAL_SHEET' || h.kind === 'DRIFTWOOD') {
+          const box = { x: h.x - h.w / 2, y: h.y - h.h / 2, w: h.w, h: h.h };
+          hit = rectsOverlap(box, hurtbox);
+          nearMiss = circleRectOverlap(pCenter.x, pCenter.y, player.grazeRadius + 10, box);
+        } else {
+          hit = circleRectOverlap(h.x, h.y, h.r * 0.85, hurtbox);
+          const distToPlayer = Math.hypot(h.x - pCenter.x, h.y - pCenter.y);
+          nearMiss = distToPlayer < (h.r + player.grazeRadius);
+        }
+
+        if (hit && !isPhasing) {
+          damagePlayer(h.cause, false);
+          spawnParticles(h.x, h.y, 14, { color: '#fbbf24', speedMax: 200 });
+          hazards.splice(i, 1);
+          continue;
+        }
+
+        if (nearMiss && !hit && !h.closeCalled && player.invulnTimer <= 0) {
+          h.closeCalled = true;
+          triggerNearMiss();
+        }
+      }
+
+      // 2. Meteors & AoE Explosions
+      for (let i = meteors.length - 1; i >= 0; i--) {
+        const m = meteors[i];
+        if (!m.falling) {
+          m.warnTimer -= dt;
+          if (m.warnTimer <= 0) m.falling = true;
+        } else {
+          m.fallProgress += dt * 4.2;
+          const t = Math.min(1, m.fallProgress);
+          m.x = m.startX + (m.targetX - m.startX) * t;
+          m.y = m.startY + (m.targetY - m.startY) * t;
+
+          spawnParticles(m.x, m.y, 2, {
+            color: '#fb923c',
+            speedMin: 20,
+            speedMax: 80,
+            sizeMax: 5,
+            lifeMax: 0.3,
+            gravity: 0
+          });
+
+          if (t >= 1) {
+            sound.playExplosion();
+            triggerShake(11, 0.3);
+            explosions.push({
+              x: m.targetX,
+              y: m.targetY,
+              radius: m.blastRadius,
+              life: 0.38,
+              maxLife: 0.38
+            });
+            spawnParticles(m.targetX, m.targetY - 6, 26, {
+              color: '#f97316',
+              speedMin: 70,
+              speedMax: 340,
+              angleMin: -Math.PI,
+              angleMax: 0,
+              sizeMax: 6,
+              lifeMax: 0.65
+            });
+
+            if (!isPhasing && circleRectOverlap(m.targetX, m.targetY, m.blastRadius * 0.85, hurtbox)) {
+              damagePlayer('Trúng vụ nổ thiên thạch', false);
+            } else if (Math.hypot(m.targetX - pCenter.x, m.targetY - pCenter.y) < m.blastRadius + player.grazeRadius + 10) {
+              triggerNearMiss(`THOÁT NỔ SÁT NÚT! x${combo + 1}`);
+            }
+
+            meteors.splice(i, 1);
+          }
+        }
+      }
+
+      // 3. Lightning Strikes (Mutation)
+      for (let i = lightningStrikes.length - 1; i >= 0; i--) {
+        const ls = lightningStrikes[i];
+        if (ls.warnTimer > 0) {
+          ls.warnTimer -= dt;
+          if (ls.warnTimer <= 0) {
+            // Strike!
+            ls.flashTimer = 0.28;
+            sound.playThunder();
+            triggerShake(10, 0.26);
+
+            // Generate jagged bolt segments
+            let curX = ls.x;
+            ls.points = [{ x: curX, y: 0 }];
+            for (let y = 60; y <= GROUND_Y; y += 65) {
+              curX = ls.x + (Math.random() - 0.5) * 42;
+              ls.points.push({ x: curX, y });
+            }
+
+            spawnParticles(ls.x, GROUND_Y - 10, 20, {
+              color: '#fef08a',
+              speedMin: 80,
+              speedMax: 280,
+              angleMin: -Math.PI,
+              angleMax: 0
+            });
+
+            // Electrify Tidal Water if active!
+            if (tidalState.active && tidalState.y < GROUND_Y - 12) {
+              tidalState.electrifiedTimer = 1.65;
+              addFloatingText(ls.x, tidalState.y - 24, '⚡ MẶT NƯỚC NHIỄM ĐIỆN!', '#fef08a');
+            }
+
+            // Direct hit or graze check
+            const distX = Math.abs(player.x - ls.x);
+            if (!isPhasing && distX < 24) {
+              damagePlayer('Bị sét đánh trúng giữa cơn bão', false);
+            } else if (distX < 56) {
+              triggerNearMiss(`NÉ TIA SÉT! x${combo + 1}`);
+            }
+          }
+        } else {
+          ls.flashTimer -= dt;
+          if (ls.flashTimer <= 0) {
+            lightningStrikes.splice(i, 1);
+          }
+        }
+      }
+
+      for (let i = explosions.length - 1; i >= 0; i--) {
+        explosions[i].life -= dt;
+        if (explosions[i].life <= 0) explosions.splice(i, 1);
+      }
+
+      for (let i = shockwaves.length - 1; i >= 0; i--) {
+        const sw = shockwaves[i];
+        sw.life -= dt;
+        const progress = 1 - sw.life / sw.maxLife;
+        sw.radius = 18 + (sw.maxRadius - 18) * (1 - Math.pow(1 - progress, 3));
+        if (sw.life <= 0) shockwaves.splice(i, 1);
+      }
+
+      // 4. Supply Drops (with Magnet Perk attraction)
+      const hasMagnet = (saveData.selectedPerk === 'magnet');
+      for (let i = supplyDrops.length - 1; i >= 0; i--) {
+        const s = supplyDrops[i];
+        s.sway += dt * 3;
+        s.x += Math.sin(s.sway) * 35 * dt;
+        if (s.y < GROUND_Y - 22) {
+          s.y += s.vy * dt;
+        }
+
+        if (hasMagnet) {
+          const dx = pCenter.x - s.x;
+          const dy = pCenter.y - s.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < 260 && dist > 1) {
+            s.x += (dx / dist) * 290 * dt;
+            s.y += (dy / dist) * 290 * dt;
+          }
+        }
+
+        const box = { x: s.x - 16, y: s.y - 16, w: 32, h: 32 };
+        if (rectsOverlap(box, { x: player.x - 16, y: player.y - 40, w: 32, h: 42 })) {
+          sound.playPickup();
+          score += 200;
+          if (s.type === 'HEART' && player.hearts < player.maxHearts) {
+            player.hearts++;
+            addFloatingText(s.x, s.y - 24, '+1 TRÁI TIM ❤️', '#4ade80');
+          } else {
+            player.hasShield = true;
+            addFloatingText(s.x, s.y - 24, 'KHIÊN NĂNG LƯỢNG 🛡️', '#38bdf8');
+          }
+          spawnParticles(s.x, s.y, 18, { color: '#fde047', speedMax: 200 });
+          supplyDrops.splice(i, 1);
+        }
+      }
+
+      // 5. Particles, Afterimages & Floating Texts
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const pt = particles[i];
+        pt.life -= dt;
+        pt.vy += pt.gravity * dt;
+        pt.x += pt.vx * dt;
+        pt.y += pt.vy * dt;
+        if (pt.life <= 0) particles.splice(i, 1);
+      }
+
+      for (let i = afterimages.length - 1; i >= 0; i--) {
+        afterimages[i].life -= dt;
+        if (afterimages[i].life <= 0) afterimages.splice(i, 1);
+      }
+
+      for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        floatingTexts[i].life -= dt;
+        floatingTexts[i].y -= 36 * dt;
+        if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1);
+      }
+
+      // 6. Achievement Toast Queue Update
+      if (!activeToast && toastQueue.length > 0) {
+        activeToast = toastQueue.shift();
+      }
+      if (activeToast) {
+        activeToast.timer -= dt;
+        if (activeToast.timer <= 0) {
+          activeToast = null;
+        }
+      }
+    }
+
+    // ---------------------------------------------------------------------------
+    // 12. CANVAS 2D RENDERER
+    // ---------------------------------------------------------------------------
+    function drawDynamicSky() {
+      let topColor = '#090d16';
+      let botColor = '#172554';
+
+      const types = activeDisasters.map((d) => d.type);
+      if (types.includes('LAVA')) {
+        topColor = '#1f090d';
+        botColor = '#7f1d1d';
+      } else if (types.includes('TIDAL')) {
+        topColor = '#041424';
+        botColor = '#0369a1';
+      } else if (types.includes('TORNADO')) {
+        topColor = '#130e24';
+        botColor = '#3b2f5c';
+      } else if (types.includes('METEOR')) {
+        topColor = '#1c0f0a';
+        botColor = '#7c2d12';
+      } else if (types.includes('WINDSTORM')) {
+        topColor = '#0f172a';
+        botColor = '#334155';
+      }
+
+      const grad = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+      grad.addColorStop(0, topColor);
+      grad.addColorStop(1, botColor);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, LOGICAL_W, GROUND_Y);
+
+      ctx.fillStyle = 'rgba(2, 6, 23, 0.45)';
+      ctx.beginPath();
+      ctx.moveTo(0, GROUND_Y);
+      ctx.lineTo(0, 490);
+      ctx.lineTo(220, 410);
+      ctx.lineTo(440, 510);
+      ctx.lineTo(680, 385);
+      ctx.lineTo(940, 495);
+      ctx.lineTo(1160, 420);
+      ctx.lineTo(LOGICAL_W, 480);
+      ctx.lineTo(LOGICAL_W, GROUND_Y);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawPillars() {
+      for (const p of pillars) {
+        if (p.currentH <= 1) continue;
+        const isSunk = p.sunkTimer > 0;
+        ctx.save();
+        if (isSunk) ctx.globalAlpha = 0.25;
+
+        const grad = ctx.createLinearGradient(p.x, p.topY, p.x + p.w, GROUND_Y);
+        grad.addColorStop(0, '#475569');
+        grad.addColorStop(1, '#1e293b');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.roundRect(p.x, p.topY, p.w, p.currentH + 8, [8, 8, 0, 0]);
+        ctx.fill();
+
+        ctx.fillStyle = isSunk ? '#64748b' : '#94a3b8';
+        ctx.fillRect(p.x + 2, p.topY, p.w - 4, 6);
+
+        if (difficulty === 'hard' && p.steppedOn && !isSunk) {
+          const ratio = Math.min(1, p.crackTimer / DIFF_CONFIG.hard.pillarSinkTime);
+          ctx.strokeStyle = ratio > 0.65 ? '#f43f5e' : '#fb923c';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(p.x + p.w * 0.3, p.topY);
+          ctx.lineTo(p.x + p.w * 0.45, p.topY + p.currentH * 0.35 * ratio);
+          ctx.lineTo(p.x + p.w * 0.25, p.topY + p.currentH * 0.65 * ratio);
+          ctx.moveTo(p.x + p.w * 0.72, p.topY);
+          ctx.lineTo(p.x + p.w * 0.6, p.topY + p.currentH * 0.5 * ratio);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // Draw Temporary Kinetic Surge Energy Platform
+      if (energyPlatform) {
+        const ep = energyPlatform;
+        const ratio = ep.timer / ep.maxTimer;
+        ctx.save();
+        ctx.fillStyle = 'rgba(250, 204, 21, 0.25)';
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.roundRect(ep.x, ep.y, ep.w, 10, 5);
+        ctx.fill();
+        ctx.stroke();
+
+        // Remaining duration bar inside platform
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(ep.x + 4, ep.y + 3, (ep.w - 8) * ratio, 4);
+        ctx.restore();
+      }
+    }
+
+    function drawGround() {
+      const gGrad = ctx.createLinearGradient(0, GROUND_Y, 0, LOGICAL_H);
+      gGrad.addColorStop(0, '#1e293b');
+      gGrad.addColorStop(0.2, '#0f172a');
+      gGrad.addColorStop(1, '#020617');
+      ctx.fillStyle = gGrad;
+      ctx.fillRect(0, GROUND_Y, LOGICAL_W, LOGICAL_H - GROUND_Y);
+
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(0, GROUND_Y, LOGICAL_W, 5);
+    }
+
+    function drawTelegraphsAndDisasters() {
+      // 1. Telegraphs
+      for (const d of activeDisasters) {
+        if (d.phase !== 'TELEGRAPH') continue;
+        const pulse = 0.5 + 0.5 * Math.sin(elapsedTime * 18);
+
+        if (d.type === 'WINDSTORM') {
+          ctx.save();
+          ctx.fillStyle = `rgba(56, 189, 248, ${0.35 + pulse * 0.55})`;
+          ctx.font = '900 28px system-ui';
+          const edgeX = d.dir === 1 ? 36 : LOGICAL_W - 110;
+          const arrow = d.dir === 1 ? '>>>' : '<<<';
+          [240, 380, 520].forEach((yy) => ctx.fillText(arrow, edgeX, yy));
+          ctx.restore();
+        } else if (d.type === 'TORNADO') {
+          const edgeX = d.dir === 1 ? 65 : LOGICAL_W - 65;
+          ctx.save();
+          ctx.strokeStyle = `rgba(192, 132, 252, ${0.4 + pulse * 0.5})`;
+          ctx.lineWidth = 3;
+          ctx.setLineDash([8, 8]);
+          ctx.beginPath();
+          ctx.moveTo(edgeX - 45, 140);
+          ctx.lineTo(edgeX + 45, 140);
+          ctx.lineTo(edgeX + 16, GROUND_Y);
+          ctx.lineTo(edgeX - 16, GROUND_Y);
+          ctx.closePath();
+          ctx.stroke();
+          ctx.restore();
+        } else if (d.type === 'LAVA') {
+          ctx.save();
+          ctx.fillStyle = `rgba(244, 63, 94, ${0.25 + pulse * 0.45})`;
+          ctx.fillRect(0, GROUND_Y - 14, LOGICAL_W, 14);
+          ctx.restore();
+        } else if (d.type === 'TIDAL') {
+          ctx.save();
+          ctx.fillStyle = `rgba(14, 165, 233, ${0.25 + pulse * 0.45})`;
+          ctx.fillRect(0, GROUND_Y - 16, LOGICAL_W, 16);
+          ctx.restore();
+        }
+      }
+
+      // 2. Active Tornado Funnels
+      for (const d of activeDisasters) {
+        if (d.type === 'TORNADO' && d.phase === 'ACTIVE') {
+          ctx.save();
+          const layers = 16;
+          for (let i = 0; i < layers; i++) {
+            const t = i / layers;
+            const y = GROUND_Y - t * 500;
+            const w = 24 + t * 115;
+            const wobble = Math.sin(elapsedTime * 14 + i * 0.8) * (10 + t * 18);
+            ctx.fillStyle = `rgba(168, 85, 247, ${0.22 - t * 0.08})`;
+            ctx.beginPath();
+            ctx.ellipse(d.x + wobble, y, w, 14, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = `rgba(233, 213, 255, ${0.35 - t * 0.15})`;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
+          ctx.fillStyle = 'rgba(244, 63, 94, 0.35)';
+          ctx.beginPath();
+          ctx.ellipse(d.x, GROUND_Y - 6, 32, 10, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      // 3. Lightning Strikes
+      for (const ls of lightningStrikes) {
+        ctx.save();
+        if (ls.warnTimer > 0) {
+          const ratio = 1 - ls.warnTimer / ls.maxWarn;
+          ctx.fillStyle = `rgba(254, 240, 138, ${0.08 + ratio * 0.22})`;
+          ctx.fillRect(ls.x - 18, 0, 36, GROUND_Y);
+
+          ctx.strokeStyle = `rgba(250, 204, 21, ${0.4 + ratio * 0.55})`;
+          ctx.lineWidth = 2;
+          ctx.setLineDash([8, 6]);
+          ctx.beginPath();
+          ctx.moveTo(ls.x, 0);
+          ctx.lineTo(ls.x, GROUND_Y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.fillStyle = '#fef08a';
+          ctx.font = '900 18px system-ui';
+          ctx.textAlign = 'center';
+          ctx.fillText('⚡', ls.x, 85);
+        } else if (ls.flashTimer > 0 && ls.points.length > 1) {
+          const alpha = ls.flashTimer / 0.28;
+          ctx.strokeStyle = `rgba(254, 240, 138, ${alpha})`;
+          ctx.lineWidth = 6;
+          ctx.shadowColor = '#38bdf8';
+          ctx.shadowBlur = 18;
+          ctx.beginPath();
+          ctx.moveTo(ls.points[0].x, ls.points[0].y);
+          for (let k = 1; k < ls.points.length; k++) {
+            ctx.lineTo(ls.points[k].x, ls.points[k].y);
+          }
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // 4. Meteor Sightlines & Falling Meteors
+      for (const m of meteors) {
+        if (!m.falling) {
+          const ratio = 1 - m.warnTimer / m.maxWarn;
+          ctx.save();
+          ctx.strokeStyle = `rgba(248, 113, 113, ${0.25 + ratio * 0.6})`;
+          ctx.lineWidth = 1.5 + ratio * 2;
+          ctx.setLineDash([10, 8]);
+          ctx.beginPath();
+          ctx.moveTo(m.startX, m.startY);
+          ctx.lineTo(m.targetX, m.targetY);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          const r = m.blastRadius * (1.25 - ratio * 0.35);
+          ctx.strokeStyle = '#ef4444';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.ellipse(m.targetX, m.targetY, r, r * 0.3, 0, 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.fillStyle = `rgba(239, 68, 68, ${0.12 + ratio * 0.28})`;
+          ctx.fill();
+          ctx.restore();
+        } else {
+          ctx.save();
+          ctx.fillStyle = '#fb923c';
+          ctx.beginPath();
+          ctx.arc(m.x, m.y, 20, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#fef08a';
+          ctx.beginPath();
+          ctx.arc(m.x, m.y, 11, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      // 5. Explosions & Kinetic Surge Shockwaves
+      for (const ex of explosions) {
+        const alpha = ex.life / ex.maxLife;
+        ctx.save();
+        ctx.fillStyle = `rgba(251, 146, 60, ${alpha * 0.55})`;
+        ctx.beginPath();
+        ctx.arc(ex.x, ex.y, ex.radius * (1.15 - alpha * 0.25), 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = `rgba(254, 240, 138, ${alpha})`;
+        ctx.lineWidth = 4;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      for (const sw of shockwaves) {
+        const alpha = sw.life / sw.maxLife;
+        ctx.save();
+        ctx.strokeStyle = `rgba(250, 204, 21, ${alpha})`;
+        ctx.lineWidth = 6 * alpha + 1;
+        ctx.beginPath();
+        ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = `rgba(56, 189, 248, ${alpha * 0.8})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(sw.x, sw.y, sw.radius * 0.82, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 6. Flying Hazards & Tidal Debris
+      for (const h of hazards) {
+        ctx.save();
+        ctx.translate(h.x, h.y);
+
+        if (h.kind === 'METAL_SHEET') {
+          ctx.rotate(h.rot);
+          ctx.fillStyle = '#cbd5e1';
+          ctx.fillRect(-h.w / 2, -h.h / 2, h.w, h.h);
+          ctx.fillStyle = '#f8fafc';
+          ctx.fillRect(-h.w / 2, -h.h / 2, h.w, 3);
+          ctx.strokeStyle = '#ef4444';
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(-h.w / 2, -h.h / 2, h.w, h.h);
+        } else if (h.kind === 'WIND_ROCK' || h.kind === 'RICOCHET_ROCK') {
+          ctx.rotate(h.rot);
+          const isRico = h.kind === 'RICOCHET_ROCK';
+          ctx.fillStyle = isRico ? '#78350f' : '#78716c';
+          ctx.strokeStyle = isRico ? '#facc15' : '#d6d3d1';
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          for (let k = 0; k < 7; k++) {
+            const ang = (k / 7) * Math.PI * 2;
+            const rad = h.r * (k % 2 === 0 ? 1.05 : 0.8);
+            const px = Math.cos(ang) * rad;
+            const py = Math.sin(ang) * rad;
+            if (k === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        } else if (h.kind === 'SEA_MINE') {
+          ctx.fillStyle = '#1e293b';
+          ctx.strokeStyle = '#f43f5e';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.arc(0, 0, h.r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          for (let s = 0; s < 8; s++) {
+            const a = (s / 8) * Math.PI * 2 + elapsedTime * 2;
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(a) * h.r, Math.sin(a) * h.r);
+            ctx.lineTo(Math.cos(a) * (h.r + 7), Math.sin(a) * (h.r + 7));
+            ctx.stroke();
+          }
+        } else if (h.kind === 'DRIFTWOOD') {
+          ctx.fillStyle = '#92400e';
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.roundRect(-h.w / 2, -h.h / 2, h.w, h.h, 5);
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        if (saveData.showHitbox) {
+          ctx.strokeStyle = '#ff0044';
+          ctx.lineWidth = 1.5;
+          if (h.kind === 'METAL_SHEET' || h.kind === 'DRIFTWOOD') {
+            ctx.strokeRect(-h.w / 2, -h.h / 2, h.w, h.h);
+          } else {
+            ctx.beginPath();
+            ctx.arc(0, 0, h.r * 0.85, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+        ctx.restore();
+      }
+    }
+
+    function drawFluidsOverlay() {
+      // Rising Lava
+      if (lavaState.y < GROUND_Y + 20) {
+        const lGrad = ctx.createLinearGradient(0, lavaState.y, 0, GROUND_Y);
+        lGrad.addColorStop(0, '#fde047');
+        lGrad.addColorStop(0.18, '#f97316');
+        lGrad.addColorStop(1, '#991b1b');
+
+        ctx.fillStyle = lGrad;
+        ctx.beginPath();
+        ctx.moveTo(0, GROUND_Y + 10);
+        for (let x = 0; x <= LOGICAL_W; x += 32) {
+          const wave = Math.sin(x * 0.03 + elapsedTime * 6) * 4;
+          ctx.lineTo(x, lavaState.y + wave);
+        }
+        ctx.lineTo(LOGICAL_W, GROUND_Y + 10);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // Tidal Surge Water (with Electrified Storm Arcs if struck by lightning)
+      if (tidalState.y < GROUND_Y + 20) {
+        ctx.save();
+        const isElec = tidalState.electrifiedTimer > 0;
+        const wGrad = ctx.createLinearGradient(0, tidalState.y, 0, GROUND_Y);
+        wGrad.addColorStop(0, isElec ? 'rgba(250, 204, 21, 0.65)' : 'rgba(56, 189, 248, 0.58)');
+        wGrad.addColorStop(1, 'rgba(3, 105, 161, 0.78)');
+
+        ctx.fillStyle = wGrad;
+        ctx.beginPath();
+        ctx.moveTo(0, GROUND_Y + 10);
+        for (let x = 0; x <= LOGICAL_W; x += 28) {
+          const wave = Math.sin(x * 0.025 + tidalState.wavePhase * tidalState.flowDir) * 7;
+          ctx.lineTo(x, tidalState.y + wave);
+        }
+        ctx.lineTo(LOGICAL_W, GROUND_Y + 10);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = isElec ? '#fef08a' : 'rgba(224, 242, 254, 0.85)';
+        ctx.lineWidth = isElec ? 4.5 : 3.5;
+        ctx.beginPath();
+        for (let x = 0; x <= LOGICAL_W; x += 28) {
+          const jitter = isElec ? (Math.random() - 0.5) * 10 : 0;
+          const wave = Math.sin(x * 0.025 + tidalState.wavePhase * tidalState.flowDir) * 7 + jitter;
+          if (x === 0) ctx.moveTo(x, tidalState.y + wave);
+          else ctx.lineTo(x, tidalState.y + wave);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    function drawSupplyDrops() {
+      for (const s of supplyDrops) {
+        ctx.save();
+        ctx.translate(s.x, s.y);
+
+        if (s.y < GROUND_Y - 26) {
+          ctx.fillStyle = 'rgba(248, 250, 252, 0.85)';
+          ctx.beginPath();
+          ctx.arc(0, -24, 18, Math.PI, 0);
+          ctx.fill();
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(-16, -24);
+          ctx.lineTo(-6, -10);
+          ctx.moveTo(16, -24);
+          ctx.lineTo(6, -10);
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = s.type === 'HEART' ? '#f43f5e' : '#0284c7';
+        ctx.strokeStyle = '#fde047';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(-13, -13, 26, 26, 6);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 14px system-ui';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(s.type === 'HEART' ? '♥' : '🛡', 0, 1);
+        ctx.restore();
+      }
+    }
+
+    function drawPlayer() {
+      const skin = SKINS[saveData.selectedSkin] || SKINS.storm;
+
+      // 1. Downward Laser / Shadow Landing Indicator when airborne
+      if (!player.onGround && gameState === 'PLAYING') {
+        const landY = getLandingProjectionY();
+        if (landY - player.y > 14) {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.42)';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([4, 5]);
+          ctx.beginPath();
+          ctx.moveTo(player.x, player.y + 2);
+          ctx.lineTo(player.x, landY);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.35)';
+          ctx.beginPath();
+          ctx.ellipse(player.x, landY, 13, 3.5, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      // 2. Dash Afterimages
+      for (const img of afterimages) {
+        const a = (img.life / img.maxLife) * 0.48;
+        ctx.fillStyle = `${skin.trail}${a})`;
+        ctx.beginPath();
+        ctx.roundRect(img.x - 10, img.y - 36, 20, 34, 6);
+        ctx.fill();
+      }
+
+      if (player.invulnTimer > 0 && Math.floor(player.invulnTimer * 18) % 2 === 0) {
+        return;
+      }
+
+      ctx.save();
+
+      // 3. Dynamic Wind-Blown Scarf Ribbon
+      if (player.scarfPoints.length > 1) {
+        ctx.strokeStyle = skin.scarf;
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(player.scarfPoints[0].x, player.scarfPoints[0].y);
+        for (let i = 1; i < player.scarfPoints.length; i++) {
+          ctx.lineTo(player.scarfPoints[i].x, player.scarfPoints[i].y);
+        }
+        ctx.stroke();
+      }
+
+      // Apply Squash-and-Stretch around player feet
+      ctx.translate(player.x, player.y);
+      ctx.scale(player.scaleX, player.scaleY);
+
+      const f = player.facing;
+      const stride = player.onGround ? Math.sin(player.runAnim) * 7 : (player.vy < 0 ? 5 : -4);
+
+      // Legs
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(0, -14);
+      ctx.lineTo(-stride, -2);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(0, -14);
+      ctx.lineTo(stride, -2);
+      ctx.stroke();
+
+      // Torso
+      ctx.fillStyle = skin.body;
+      ctx.strokeStyle = skin.outline;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(-8, -28, 16, 16, 4);
+      ctx.fill();
+      ctx.stroke();
+
+      // Head & Glowing Visor
+      ctx.fillStyle = skin.head;
+      ctx.beginPath();
+      ctx.arc(0, -33, 7.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = skin.visor;
+      ctx.fillRect(f === 1 ? 1 : -7, -35, 6, 3.5);
+
+      ctx.restore();
+
+      // Active Energy Shield Bubble
+      if (player.hasShield) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.88)';
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.14)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(player.x, player.y - 20, 25, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Oxygen Gauge above head when submerged
+      if (player.oxygen < player.maxOxygen) {
+        const barW = 46;
+        const barH = 6;
+        const bx = player.x - barW / 2;
+        const by = player.y - 54;
+        const ratio = Math.max(0, player.oxygen / player.maxOxygen);
+
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.fillRect(bx - 1, by - 1, barW + 2, barH + 2);
+
+        ctx.fillStyle = ratio < 0.25 ? '#f43f5e' : '#38bdf8';
+        ctx.fillRect(bx, by, barW * ratio, barH);
+      }
+
+      // Debug Hitbox & Graze Ring
+      if (saveData.showHitbox) {
+        const hb = player.getHurtbox();
+        const pc = player.getCenter();
+        ctx.save();
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(pc.x, pc.y, player.grazeRadius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = player.dashTimer > 0 ? '#38bdf8' : '#4ade80';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(hb.x, hb.y, hb.w, hb.h);
+        ctx.restore();
+      }
+    }
+
+    function drawParticlesAndText() {
+      for (const pt of particles) {
+        const alpha = Math.max(0, pt.life / pt.maxLife);
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = pt.color;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      for (const ft of floatingTexts) {
+        const alpha = Math.max(0, ft.life / ft.maxLife);
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.font = '900 15px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#020617';
+        ctx.fillText(ft.text, ft.x + 1, ft.y + 1);
+        ctx.fillStyle = ft.color;
+        ctx.fillText(ft.text, ft.x, ft.y);
+        ctx.restore();
+      }
+    }
+
+    function drawHUD() {
+      if (gameState !== 'PLAYING' && gameState !== 'PAUSED') return;
+
+      ctx.save();
+
+      // 1. Top-Left: 3 Hearts, Dash Bar & Kinetic Surge Meter
+      for (let i = 0; i < player.maxHearts; i++) {
+        const hx = 28 + i * 34;
+        const hy = 28;
+        const filled = i < player.hearts;
+        ctx.font = '26px system-ui';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = filled ? '#f43f5e' : 'rgba(148, 163, 184, 0.28)';
+        ctx.fillText('♥', hx, hy);
+      }
+
+      // Dash Cooldown Bar
+      const dashMax = player.getDashMaxCooldown();
+      const dashRatio = Math.max(0, Math.min(1, 1 - player.dashCooldown / dashMax));
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
+      ctx.beginPath();
+      ctx.roundRect(16, 48, 118, 7, 4);
+      ctx.fill();
+
+      ctx.fillStyle = dashRatio >= 1 ? '#38bdf8' : '#64748b';
+      ctx.beginPath();
+      ctx.roundRect(16, 48, 118 * dashRatio, 7, 4);
+      ctx.fill();
+
+      ctx.font = '700 10px system-ui';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = dashRatio >= 1 ? '#bae6fd' : '#94a3b8';
+      ctx.fillText(dashRatio >= 1 ? 'DASH SẴN SÀNG [Shift]' : 'HỒI DASH...', 16, 68);
+
+      // Kinetic Surge Ultimate Bar
+      const surgeRatio = Math.min(1, surgeCharge / 100);
+      const isSurgeReady = surgeCharge >= 100;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+      ctx.beginPath();
+      ctx.roundRect(16, 76, 155, 11, 5);
+      ctx.fill();
+
+      ctx.fillStyle = isSurgeReady ? '#facc15' : '#a855f7';
+      ctx.beginPath();
+      ctx.roundRect(16, 76, 155 * surgeRatio, 11, 5);
+      ctx.fill();
+
+      ctx.font = '800 11px system-ui';
+      ctx.fillStyle = isSurgeReady ? '#fef08a' : '#d8b4fe';
+      ctx.fillText(
+        isSurgeReady ? '⚡ XUNG KÍCH SẴN SÀNG [E / J]!' : `⚡ Xung Kích: ${Math.floor(surgeCharge)}%`,
+        16,
+        101
+      );
+
+      // Update Touch Surge Button Glow
+      const touchSurgeBtn = document.getElementById('touch-surge-btn');
+      if (touchSurgeBtn) {
+        touchSurgeBtn.classList.toggle('ready', isSurgeReady);
+      }
+
+      // 2. Top-Center: Survival Timer, Score, Combo & Active Disaster Banners
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = '900 32px monospace';
+      ctx.fillText(`${elapsedTime.toFixed(1)}s`, LOGICAL_W / 2, 34);
+
+      ctx.font = '800 13px system-ui';
+      ctx.fillStyle = '#38bdf8';
+      const comboBadge = combo > 1 ? `  •  🔥 COMBO x${combo}` : '';
+      ctx.fillText(
+        `ĐIỂM: ${Math.floor(score).toLocaleString('vi-VN')}  •  NÉ SÁT NÚT: ${closeCalls}${comboBadge}`,
+        LOGICAL_W / 2,
+        56
+      );
+
+      let pillY = 82;
+      for (const d of activeDisasters) {
+        const meta = DISASTER_META[d.type];
+        const isWarn = d.phase === 'TELEGRAPH';
+        const label = isWarn
+          ? `⚠️ SẮP XẢY RA: ${meta.name} (${d.timer.toFixed(1)}s)`
+          : `${meta.icon} ĐANG DIỄN RA: ${meta.name}`;
+
+        ctx.font = '800 13px system-ui';
+        const textW = ctx.measureText(label).width + 28;
+        ctx.fillStyle = isWarn ? 'rgba(244, 63, 94, 0.88)' : 'rgba(15, 23, 42, 0.84)';
+        ctx.strokeStyle = meta.color;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(LOGICAL_W / 2 - textW / 2, pillY - 14, textW, 24, 12);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(label, LOGICAL_W / 2, pillY + 2);
+        pillY += 30;
+      }
+
+      // 3. Live Achievement Unlock Toast Banner
+      if (activeToast) {
+        const slide = Math.min(1, (activeToast.maxTimer - activeToast.timer) * 5, activeToast.timer * 4);
+        const toastW = 310;
+        const toastH = 54;
+        const tx = LOGICAL_W - toastW - 18;
+        const ty = 56 - (1 - slide) * 70;
+
+        ctx.save();
+        ctx.globalAlpha = slide;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(tx, ty, toastW, toastH, 12);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = '24px system-ui';
+        ctx.textAlign = 'left';
+        ctx.fillText(activeToast.icon, tx + 14, ty + 29);
+
+        ctx.font = '800 10px system-ui';
+        ctx.fillStyle = '#fde047';
+        ctx.fillText('🏆 MỞ KHÓA THÀNH TỰU MỚI!', tx + 48, ty + 20);
+
+        ctx.font = '800 14px system-ui';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(activeToast.title, tx + 48, ty + 39);
+        ctx.restore();
+      }
+
+      ctx.restore();
+    }
+
+    function render() {
+      ctx.save();
+
+      if (shakeTimer > 0 && saveData.shake) {
+        const dx = (Math.random() - 0.5) * shakeIntensity * 2;
+        const dy = (Math.random() - 0.5) * shakeIntensity * 2;
+        ctx.translate(dx, dy);
+      }
+
+      drawDynamicSky();
+      drawPillars();
+      drawGround();
+      drawTelegraphsAndDisasters();
+      drawSupplyDrops();
+      drawPlayer();
+      drawFluidsOverlay();
+      drawParticlesAndText();
+      drawHUD();
+
+      ctx.restore();
+    }
+
+    // ---------------------------------------------------------------------------
+    // 13. MAIN GAME LOOP
+    // ---------------------------------------------------------------------------
+    let lastTimestamp = performance.now();
+
+    function gameLoop(now) {
+      const rawDt = (now - lastTimestamp) / 1000;
+      lastTimestamp = now;
+      const dt = Math.min(rawDt, 0.05);
+
+      if (gameState === 'PLAYING') {
+        if (hitStopTimer > 0) {
+          hitStopTimer -= dt;
+        } else {
+          elapsedTime += dt;
+          if (shakeTimer > 0) shakeTimer -= dt;
+
+          updateAIDirector(dt);
+          updatePillars(dt);
+          updateDisasters(dt);
+          updatePlayer(dt);
+          updateEntities(dt);
+          sound.updateBGM(dt, true, activeDisasters.length, difficulty === 'hard');
+        }
+      }
+
+      render();
+      requestAnimationFrame(gameLoop);
+    }
+
+    // ---------------------------------------------------------------------------
+    // 14. UI CONTROLLERS & NAVIGATION FLOW
+    // ---------------------------------------------------------------------------
+    const startOverlay = document.getElementById('start-overlay');
+    const achievementsOverlay = document.getElementById('achievements-overlay');
+    const settingsOverlay = document.getElementById('settings-overlay');
+    const pauseOverlay = document.getElementById('pause-overlay');
+    const gameoverOverlay = document.getElementById('gameover-overlay');
+    const hudPauseBtn = document.getElementById('hud-pause-btn');
+    const touchControlsEl = document.getElementById('touch-controls');
+
+    function refreshMenuRecords() {
+      document.getElementById('best-normal-display').textContent =
+        `Kỷ lục: ${saveData.bestNormalTime.toFixed(1)}s • ${Math.floor(saveData.bestNormalScore).toLocaleString('vi-VN')} đ`;
+      document.getElementById('best-hard-display').textContent =
+        `Kỷ lục: ${saveData.bestHardTime.toFixed(1)}s • ${Math.floor(saveData.bestHardScore).toLocaleString('vi-VN')} đ`;
+
+      const unlockedCount = Object.keys(saveData.unlockedAchievements).length;
+      document.getElementById('ach-count-label').textContent = unlockedCount;
+    }
+
+    function renderAchievementsModal() {
+      const container = document.getElementById('ach-list-container');
+      container.innerHTML = '';
+      for (const ach of ACHIEVEMENTS_DEF) {
+        const isUnlocked = !!saveData.unlockedAchievements[ach.id];
+        const card = document.createElement('div');
+        card.className = `ach-card ${isUnlocked ? 'unlocked' : ''}`;
+        card.innerHTML = `
+          <div class="ach-icon">${isUnlocked ? ach.icon : '🔒'}</div>
+          <div>
+            <div class="ach-title">${ach.title}</div>
+            <div class="ach-desc">${ach.desc}</div>
+          </div>
+        `;
+        container.appendChild(card);
+      }
+    }
+
+    window.selectDifficulty = function (mode) {
+      sound.unlock();
+      difficulty = mode;
+      document.getElementById('diff-normal').classList.toggle('active', mode === 'normal');
+      document.getElementById('diff-hard').classList.toggle('active', mode === 'hard');
+    };
+
+    window.selectSkin = function (skinKey) {
+      sound.unlock();
+      saveData.selectedSkin = skinKey;
+      persistSave();
+      ['storm', 'geologist', 'void'].forEach((k) => {
+        document.getElementById(`skin-${k}`).classList.toggle('active', k === skinKey);
+      });
+      document.getElementById('skin-preview-label').textContent = SKINS[skinKey].name;
+    };
+
+    window.selectPerk = function (perkKey) {
+      sound.unlock();
+      saveData.selectedPerk = perkKey;
+      persistSave();
+      ['jetpack', 'oxygen', 'magnet'].forEach((k) => {
+        document.getElementById(`perk-${k}`).classList.toggle('active', k === perkKey);
+      });
+      document.getElementById('perk-preview-label').textContent = PERKS[perkKey].name;
+    };
+
+    function applySettingsUI() {
+      document.getElementById('opt-sfx').value = Math.round(saveData.sfxVol * 100);
+      document.getElementById('opt-sfx-val').textContent = `${Math.round(saveData.sfxVol * 100)}%`;
+
+      document.getElementById('opt-bgm').value = Math.round(saveData.bgmVol * 100);
+      document.getElementById('opt-bgm-val').textContent = `${Math.round(saveData.bgmVol * 100)}%`;
+
+      const setToggle = (id, state) => {
+        const el = document.getElementById(id);
+        el.textContent = state ? 'BẬT' : 'TẮT';
+        el.className = `toggle-btn ${state ? 'on' : 'off'}`;
+      };
+
+      setToggle('opt-shake', saveData.shake);
+      setToggle('opt-hitbox', saveData.showHitbox);
+      setToggle('opt-touch', saveData.touchControls);
+
+      if (saveData.touchControls && gameState === 'PLAYING') {
+        touchControlsEl.classList.add('active');
+      } else {
+        touchControlsEl.classList.remove('active');
+      }
+    }
+
+    function startGame() {
+      sound.unlock();
+      elapsedTime = 0;
+      score = 0;
+      disastersSurvived = 0;
+      closeCalls = 0;
+      combo = 1;
+      maxCombo = 1;
+      comboTimer = 0;
+      surgeCharge = 0;
+      surgeUsesThisRun = 0;
+      noDamageTimer = 0;
+      lowestUnderwaterOxygen = 99;
+      wasSubmerged = false;
+
+      lastCauseOfDeath = '';
+      shakeTimer = 0;
+      hitStopTimer = 0;
+
+      pillars = [];
+      energyPlatform = null;
+      activeDisasters = [];
+      hazards = [];
+      meteors = [];
+      lightningStrikes = [];
+      explosions = [];
+      shockwaves = [];
+      supplyDrops = [];
+      particles = [];
+      floatingTexts = [];
+      afterimages = [];
+
+      lavaState.active = false;
+      lavaState.y = GROUND_Y + 45;
+      tidalState.active = false;
+      tidalState.y = GROUND_Y + 45;
+      tidalState.electrifiedTimer = 0;
+
+      director.nextSpawnTimer = 1.2;
+      director.lastTypes = [];
+      director.supplyTimer = 15;
+
+      player.reset();
+
+      startOverlay.classList.add('hidden');
+      achievementsOverlay.classList.add('hidden');
+      pauseOverlay.classList.add('hidden');
+      gameoverOverlay.classList.add('hidden');
+      settingsOverlay.classList.add('hidden');
+
+      gameState = 'PLAYING';
+      hudPauseBtn.classList.add('visible');
+      applySettingsUI();
+    }
+
+    function pauseGame() {
+      if (gameState !== 'PLAYING') return;
+      gameState = 'PAUSED';
+      pauseOverlay.classList.remove('hidden');
+      hudPauseBtn.classList.remove('visible');
+      touchControlsEl.classList.remove('active');
+    }
+
+    function resumeGame() {
+      if (gameState !== 'PAUSED') return;
+      gameState = 'PLAYING';
+      pauseOverlay.classList.add('hidden');
+      hudPauseBtn.classList.add('visible');
+      applySettingsUI();
+    }
+
+    function returnToMenu() {
+      gameState = 'MENU';
+      pauseOverlay.classList.add('hidden');
+      gameoverOverlay.classList.add('hidden');
+      settingsOverlay.classList.add('hidden');
+      achievementsOverlay.classList.add('hidden');
+      hudPauseBtn.classList.remove('visible');
+      touchControlsEl.classList.remove('active');
+      refreshMenuRecords();
+      startOverlay.classList.remove('hidden');
+    }
+
+    function endGame() {
+      gameState = 'GAMEOVER';
+      hudPauseBtn.classList.remove('visible');
+      touchControlsEl.classList.remove('active');
+
+      const isHard = difficulty === 'hard';
+      const prevBestTime = isHard ? saveData.bestHardTime : saveData.bestNormalTime;
+      const prevBestScore = isHard ? saveData.bestHardScore : saveData.bestNormalScore;
+      let isNewTime = false;
+      let isNewScore = false;
+
+      if (elapsedTime > prevBestTime) {
+        isNewTime = true;
+        if (isHard) saveData.bestHardTime = elapsedTime;
+        else saveData.bestNormalTime = elapsedTime;
+      }
+      if (score > prevBestScore) {
+        isNewScore = true;
+        if (isHard) saveData.bestHardScore = score;
+        else saveData.bestNormalScore = score;
+      }
+      persistSave();
+
+      const bestTimeNow = isHard ? saveData.bestHardTime : saveData.bestNormalTime;
+      const bestScoreNow = isHard ? saveData.bestHardScore : saveData.bestNormalScore;
+
+      document.getElementById('go-cause').textContent = lastCauseOfDeath || 'Kiệt sức giữa thiên tai';
+      document.getElementById('go-time').textContent = `${elapsedTime.toFixed(1)}s`;
+      document.getElementById('go-best-time').innerHTML = `${bestTimeNow.toFixed(1)}s${isNewTime ? '<span class="new-record-tag">MỚI!</span>' : ''}`;
+      document.getElementById('go-score').textContent = Math.floor(score).toLocaleString('vi-VN');
+      document.getElementById('go-best-score').innerHTML = `${Math.floor(bestScoreNow).toLocaleString('vi-VN')}${isNewScore ? '<span class="new-record-tag">MỚI!</span>' : ''}`;
+      document.getElementById('go-graze-combo').textContent = `${closeCalls} (x${maxCombo})`;
+      document.getElementById('go-disasters').textContent = disastersSurvived;
+
+      gameoverOverlay.classList.remove('hidden');
+    }
+
+    // Wire up buttons
+    document.getElementById('btn-start-play').addEventListener('click', startGame);
+    document.getElementById('btn-replay').addEventListener('click', startGame);
+    document.getElementById('hud-pause-btn').addEventListener('click', pauseGame);
+    document.getElementById('btn-resume').addEventListener('click', resumeGame);
+    document.getElementById('btn-pause-restart').addEventListener('click', startGame);
+    document.getElementById('btn-pause-menu').addEventListener('click', returnToMenu);
+    document.getElementById('btn-go-menu').addEventListener('click', returnToMenu);
+
+    document.getElementById('btn-open-achievements').addEventListener('click', () => {
+      sound.unlock();
+      renderAchievementsModal();
+      startOverlay.classList.add('hidden');
+      achievementsOverlay.classList.remove('hidden');
+    });
+
+    document.getElementById('btn-close-achievements').addEventListener('click', () => {
+      achievementsOverlay.classList.add('hidden');
+      startOverlay.classList.remove('hidden');
+    });
+
+    document.getElementById('btn-open-settings').addEventListener('click', () => {
+      sound.unlock();
+      settingsReturnState = 'MENU';
+      startOverlay.classList.add('hidden');
+      settingsOverlay.classList.remove('hidden');
+    });
+
+    document.getElementById('btn-pause-settings').addEventListener('click', () => {
+      settingsReturnState = 'PAUSED';
+      pauseOverlay.classList.add('hidden');
+      settingsOverlay.classList.remove('hidden');
+    });
+
+    document.getElementById('btn-close-settings').addEventListener('click', () => {
+      persistSave();
+      settingsOverlay.classList.add('hidden');
+      if (settingsReturnState === 'PAUSED') {
+        pauseOverlay.classList.remove('hidden');
+      } else {
+        startOverlay.classList.remove('hidden');
+      }
+    });
+
+    document.getElementById('opt-sfx').addEventListener('input', (e) => {
+      sound.unlock();
+      saveData.sfxVol = Number(e.target.value) / 100;
+      sound.updateVolumes();
+      applySettingsUI();
+    });
+
+    document.getElementById('opt-bgm').addEventListener('input', (e) => {
+      sound.unlock();
+      saveData.bgmVol = Number(e.target.value) / 100;
+      sound.updateVolumes();
+      applySettingsUI();
+    });
+
+    document.getElementById('opt-shake').addEventListener('click', () => {
+      saveData.shake = !saveData.shake;
+      applySettingsUI();
+    });
+
+    document.getElementById('opt-hitbox').addEventListener('click', () => {
+      saveData.showHitbox = !saveData.showHitbox;
+      applySettingsUI();
+    });
+
+    document.getElementById('opt-touch').addEventListener('click', () => {
+      saveData.touchControls = !saveData.touchControls;
+      applySettingsUI();
+    });
+
+    window.onload = function () {
+      selectSkin(saveData.selectedSkin);
+      selectPerk(saveData.selectedPerk);
+      refreshMenuRecords();
+      applySettingsUI();
+      player.reset();
+      lastTimestamp = performance.now();
+      requestAnimationFrame(gameLoop);
+    };
+  </script>
+</body>
+</html>

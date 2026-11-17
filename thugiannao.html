@@ -3,7 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Media Muxer Pro - Pro v3.3 (Large Video Optimized)</title>
+    <title>Media Muxer Pro - Universal Zenith v4.0 (Production Grade 8.0000)</title>
+    <!-- Thư viện hỗ trợ đóng gói ZIP không giới hạn Base64 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
       /* ============================================
          DESIGN TOKENS & CSS VARIABLES
@@ -128,7 +130,7 @@
         border-top: 1px solid var(--border-color);
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 8px;
       }
 
       .btn-disk-connect {
@@ -149,12 +151,38 @@
         color: #fff;
       }
 
+      .fallback-actions {
+        display: flex;
+        gap: 6px;
+      }
+
+      .btn-fallback {
+        flex: 1;
+        padding: 8px;
+        background: var(--bg-hover);
+        border: 1px solid var(--border-color);
+        color: var(--text-main);
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: var(--transition);
+      }
+      .btn-fallback:hover { background: var(--bg-active); border-color: var(--accent); }
+
       #disk-status {
         font-size: 11px;
         color: var(--text-muted);
         text-align: center;
         display: block;
         word-break: break-all;
+      }
+
+      #storage-status {
+        font-size: 10px;
+        color: var(--text-muted);
+        text-align: center;
+        display: block;
       }
 
       .btn-theme {
@@ -219,6 +247,17 @@
         display: none;
       }
 
+      #audio-canvas {
+        position: absolute;
+        bottom: 55px;
+        left: 0;
+        width: 100%;
+        height: 50px;
+        pointer-events: none;
+        z-index: 25;
+        opacity: 0.85;
+      }
+
       .empty-state {
         position: absolute;
         top: 50%; left: 50%;
@@ -238,27 +277,71 @@
         text-shadow: 0 4px 12px rgba(0,0,0,0.5);
       }
 
-      .btn-fullscreen {
+      /* CUSTOM MEDIA CONTROLS BAR */
+      #media-controls {
         position: absolute;
-        bottom: 25px;
-        right: 25px;
-        background: rgba(0, 0, 0, 0.6);
-        color: white;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        border-radius: 8px;
-        width: 40px;
-        height: 40px;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: linear-gradient(0deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 70%, transparent 100%);
+        padding: 15px 25px;
         display: flex;
-        justify-content: center;
         align-items: center;
-        cursor: pointer;
-        font-size: 20px;
-        z-index: 20;
+        gap: 12px;
+        z-index: 30;
         opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+      #workspace:hover #media-controls { opacity: 1; }
+
+      .ctrl-btn {
+        background: transparent;
+        border: none;
+        color: #fff;
+        font-size: 18px;
+        cursor: pointer;
+        padding: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         transition: var(--transition);
       }
-      #workspace:hover .btn-fullscreen { opacity: 1; }
-      .btn-fullscreen:hover { background: var(--accent); border-color: var(--accent); transform: scale(1.1); }
+      .ctrl-btn:hover { color: var(--accent); transform: scale(1.15); }
+
+      .time-display {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-main);
+        font-family: monospace;
+        user-select: none;
+      }
+
+      .seek-slider, .volume-slider {
+        -webkit-appearance: none;
+        appearance: none;
+        height: 5px;
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.3);
+        outline: none;
+        cursor: pointer;
+        transition: var(--transition);
+      }
+      .seek-slider { flex-grow: 1; }
+      .volume-slider { width: 70px; }
+
+      .seek-slider::-webkit-slider-thumb, .volume-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--accent);
+        cursor: pointer;
+        transition: transform 0.1s ease;
+      }
+      .seek-slider::-webkit-slider-thumb:hover, .volume-slider::-webkit-slider-thumb:hover {
+        transform: scale(1.3);
+      }
 
       /* ========== MODAL TẠO / SỬA ========== */
       .modal-overlay {
@@ -301,6 +384,22 @@
       .drop-zone input[type="file"] { display: none; }
       .file-name-display { font-weight: bold; color: #4cd137; margin-top: 8px; display: block;}
 
+      .btn-remove-media {
+        display: none;
+        margin-top: 6px;
+        font-size: 12px;
+        color: var(--danger);
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 2px 6px;
+        border-radius: 4px;
+        transition: var(--transition);
+      }
+      .btn-remove-media:hover {
+        background: rgba(255, 71, 87, 0.15);
+      }
+
       .modal-actions { display: flex; gap: 10px; margin-top: 25px; }
       .btn-primary {
         flex: 1; padding: 12px; background: var(--accent); color: #fff;
@@ -322,7 +421,13 @@
       <ul id="folder-list"></ul>
       <div class="sidebar-footer">
         <button id="btn-disk-connect" class="btn-disk-connect" title="Kết nối tự động ghi file đĩa cứng D/E">📁 KẾT NỐI FILE Ổ D/E</button>
+        <div class="fallback-actions">
+          <button id="btn-export-zip" class="btn-fallback" title="Xuất trọn gói dữ liệu ZIP không giới hạn">📦 Xuất ZIP</button>
+          <button id="btn-import-zip" class="btn-fallback" title="Nạp file dữ liệu ZIP hoặc JSON">📤 Nhập Dữ Liệu</button>
+          <input type="file" id="fallback-file-input" accept=".json,.zip" style="display:none">
+        </div>
         <span id="disk-status">Chưa kết nối file ổ D/E</span>
+        <span id="storage-status">Bộ nhớ đệm: Đang tính toán...</span>
         <button id="theme-toggle" class="btn-theme" title="Đổi giao diện Sáng/Tối">🌙</button>
       </div>
     </div>
@@ -336,6 +441,7 @@
         <video id="main-video" muted loop playsinline></video>
         <img id="main-image" alt="Visual Content" />
         <audio id="main-audio" loop></audio>
+        <canvas id="audio-canvas"></canvas>
         
         <div id="empty-state" class="empty-state">
           <h2>🎬 Không gian Trình chiếu</h2>
@@ -344,8 +450,16 @@
         
         <div id="pause-indicator" class="pause-indicator">⏸️</div>
 
-        <div id="btn-fullscreen" class="btn-fullscreen" title="Toàn màn hình">
-          <svg fill="currentColor" width="24" height="24" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+        <!-- CUSTOM MEDIA CONTROLS BAR -->
+        <div id="media-controls">
+          <button id="ctrl-btn-play" class="ctrl-btn" title="Phát/Tạm dừng (Space)">▶️</button>
+          <span id="time-current" class="time-display">00:00</span>
+          <input type="range" id="seek-bar" class="seek-slider" min="0" max="100" value="0" step="0.1">
+          <span id="time-duration" class="time-display">00:00</span>
+          <button id="ctrl-btn-mute" class="ctrl-btn" title="Bật/Tắt âm (M)">🔊</button>
+          <input type="range" id="volume-bar" class="volume-slider" min="0" max="1" value="1" step="0.05">
+          <button id="ctrl-btn-pip" class="ctrl-btn" title="Cửa sổ ghim nổi (P)">🖼️</button>
+          <button id="ctrl-btn-fullscreen" class="ctrl-btn" title="Toàn màn hình (F)">⛶</button>
         </div>
       </div>
     </div>
@@ -367,6 +481,7 @@
             <span class="file-name-display" id="display-video-name"></span>
             <input type="file" id="input-video" accept="video/*, image/*">
           </div>
+          <button type="button" class="btn-remove-media" id="btn-remove-video">🗑️ Gỡ bỏ Video/Hình ảnh</button>
         </div>
 
         <div class="input-group">
@@ -376,6 +491,7 @@
             <span class="file-name-display" id="display-audio-name"></span>
             <input type="file" id="input-audio" accept="audio/*, video/*">
           </div>
+          <button type="button" class="btn-remove-media" id="btn-remove-audio">🗑️ Gỡ bỏ File Âm Thanh</button>
         </div>
 
         <div class="modal-actions">
@@ -387,7 +503,7 @@
 
     <script>
       /**
-       * KIẾN TRÚC LÕI - PHIÊN BẢN 8.000 (V3.3 - Tối ưu xử lý Video dung lượng lớn)
+       * KIẾN TRÚC LÕI - PHIÊN BẢN V4.0 (Universal Zenith Master Edition - Production Grade 8.0000)
        */
 
       // GIỚI HẠN DUNG LƯỢNG MÃ HÓA BASE64 (30MB)
@@ -406,6 +522,50 @@
         const res = await fetch(base64Str);
         return await res.blob();
       };
+
+      const formatTime = (secs) => {
+        if (isNaN(secs) || secs < 0) return "00:00";
+        const m = Math.floor(secs / 60);
+        const s = Math.floor(secs % 60);
+        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+      };
+
+      // Giám sát dung lượng ổ đĩa IndexedDB Real-time
+      const updateStorageInfo = async () => {
+        const storageEl = document.getElementById("storage-status");
+        if (navigator.storage && navigator.storage.estimate) {
+          try {
+            const estimate = await navigator.storage.estimate();
+            const usedMB = (estimate.usage / (1024 * 1024)).toFixed(1);
+            const quotaMB = (estimate.quota / (1024 * 1024)).toFixed(0);
+            if (storageEl) storageEl.textContent = `Bộ nhớ DB: ${usedMB} MB / ${quotaMB} MB`;
+          } catch (e) {
+            console.error("Không thể đo đạc dung lượng storage:", e);
+          }
+        }
+      };
+
+      // --- MODULE ĐỒNG BỘ ĐA TAB TỨC THỜI (BroadcastChannel API) ---
+      const SyncBroadcast = (() => {
+        let channel = null;
+        try {
+          channel = new BroadcastChannel('mediamuxer_tab_sync');
+        } catch (e) {
+          console.log('BroadcastChannel không được hỗ trợ trên trình duyệt này');
+        }
+
+        const notify = (action, payload = {}) => {
+          if (channel) channel.postMessage({ action, payload });
+        };
+
+        const init = (onMessageCallback) => {
+          if (channel) {
+            channel.onmessage = (event) => onMessageCallback(event.data);
+          }
+        };
+
+        return { init, notify };
+      })();
 
       // --- MODULE 1: QUẢN LÝ CƠ SỞ DỮ LIỆU (IndexedDB) ---
       const DBManager = (() => {
@@ -429,10 +589,29 @@
         });
 
         const saveFolder = (folderData) => new Promise((resolve, reject) => {
-          const tx = db.transaction("folders", "readwrite");
-          const req = tx.objectStore("folders").put(folderData);
-          req.onsuccess = (e) => resolve(e.target.result); 
-          req.onerror = (e) => reject(e);
+          try {
+            const tx = db.transaction("folders", "readwrite");
+            const req = tx.objectStore("folders").put(folderData);
+            req.onsuccess = (e) => resolve(e.target.result); 
+            req.onerror = (e) => reject(e);
+          } catch (err) {
+            reject(err);
+          }
+        });
+
+        const updateFoldersOrder = (folders) => new Promise((resolve, reject) => {
+          try {
+            const tx = db.transaction("folders", "readwrite");
+            const store = tx.objectStore("folders");
+            folders.forEach((folder, index) => {
+              folder.orderIndex = index;
+              store.put(folder);
+            });
+            tx.oncomplete = () => resolve();
+            tx.onerror = (e) => reject(e);
+          } catch (err) {
+            reject(err);
+          }
         });
 
         const getAllFolders = () => new Promise((resolve, reject) => {
@@ -470,10 +649,10 @@
           req.onerror = (e) => reject(e);
         });
 
-        return { init, saveFolder, getAllFolders, getFolder, deleteFolder, saveFileHandle, getFileHandle };
+        return { init, saveFolder, updateFoldersOrder, getAllFolders, getFolder, deleteFolder, saveFileHandle, getFileHandle };
       })();
 
-      // --- MODULE NATIVE FILE SYSTEM ACCESS API ---
+      // --- MODULE NATIVE & FALLBACK FILE SYSTEM ACCESS (KÈM ENGINE ĐÓNG GÓI ZIP) ---
       const DiskFileSystemManager = (() => {
         let cachedHandle = null;
         let saveTimeout = null;
@@ -486,17 +665,17 @@
           }
         };
 
-        const verifyPermission = async (fileHandle, readWrite) => {
+        const verifyPermission = async (fileHandle, readWrite, interactive = false) => {
           const options = {};
           if (readWrite) options.mode = "readwrite";
           if ((await fileHandle.queryPermission(options)) === "granted") return true;
-          if ((await fileHandle.requestPermission(options)) === "granted") return true;
+          if (interactive && (await fileHandle.requestPermission(options)) === "granted") return true;
           return false;
         };
 
         const connectFile = async () => {
           if (!('showOpenFilePicker' in window) && !('showSaveFilePicker' in window)) {
-            alert("Trình duyệt không hỗ trợ File System Access API. Vui lòng sử dụng Chrome hoặc Edge.");
+            alert("Trình duyệt không hỗ trợ File System Access API. Bạn hãy dùng nút 'Xuất ZIP' và 'Nhập Dữ Liệu' bên dưới để lưu thủ công.");
             return;
           }
           try {
@@ -534,13 +713,122 @@
               }
 
               updateStatus(`✅ Đã kết nối: ${fileHandle.name}`, true);
-              alert(`Đã kết nối thành công với file "${fileHandle.name}" trên ổ cứng! Mọi cấu trúc và dữ liệu sẽ tự động lưu vĩnh viễn.`);
+              alert(`Đã kết nối thành công với file "${fileHandle.name}" trên ổ cứng!`);
             }
           } catch (err) {
             if (err.name !== 'AbortError') {
               console.error("Lỗi File System Access API:", err);
               alert("Lỗi kết nối file: " + err.message);
             }
+          }
+        };
+
+        // Đóng gói trọn gói ZIP không giới hạn 30MB
+        const exportZIPPackage = async () => {
+          if (typeof JSZip === 'undefined') {
+            alert("Đang nạp thư viện đóng gói ZIP, vui lòng bấm lại sau 2 giây...");
+            return;
+          }
+          updateStatus("⏳ Đang nén dữ liệu ZIP...", true);
+          const zip = new JSZip();
+          const folders = await DBManager.getAllFolders();
+          const manifest = [];
+
+          for (let i = 0; i < folders.length; i++) {
+            const f = folders[i];
+            let videoPath = null;
+            let audioPath = null;
+
+            if (f.videoBlob) {
+              const ext = (f.videoBlob.type && f.videoBlob.type.includes('/')) ? f.videoBlob.type.split('/')[1] : 'bin';
+              videoPath = `media/v_${f.id}.${ext}`;
+              zip.file(videoPath, f.videoBlob);
+            }
+            if (f.audioBlob) {
+              const ext = (f.audioBlob.type && f.audioBlob.type.includes('/')) ? f.audioBlob.type.split('/')[1] : 'bin';
+              audioPath = `media/a_${f.id}.${ext}`;
+              zip.file(audioPath, f.audioBlob);
+            }
+
+            manifest.push({
+              id: f.id,
+              name: f.name,
+              videoPath: videoPath,
+              audioPath: audioPath,
+              timestamp: f.timestamp,
+              orderIndex: f.orderIndex ?? i
+            });
+          }
+
+          zip.file("manifest.json", JSON.stringify(manifest, null, 2));
+          const content = await zip.generateAsync({ type: "blob" });
+          const url = URL.createObjectURL(content);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `mediamuxer_full_backup_${Date.now()}.zip`;
+          a.click();
+          URL.revokeObjectURL(url);
+          updateStatus("✅ Đã xuất gói ZIP trọn gói", true);
+        };
+
+        const importDataFile = async (file) => {
+          if (file.name.endsWith('.zip')) {
+            if (typeof JSZip === 'undefined') {
+              alert("Chưa nạp xong thư viện giải nén!");
+              return;
+            }
+            try {
+              updateStatus("⏳ Đang giải nén ZIP...", true);
+              const zip = await JSZip.loadAsync(file);
+              const manifestFile = zip.file("manifest.json");
+              if (!manifestFile) throw new Error("File ZIP không chuẩn (Thiếu manifest.json)");
+
+              const manifestText = await manifestFile.async("string");
+              const manifest = JSON.parse(manifestText);
+
+              for (const item of manifest) {
+                let vBlob = null;
+                let aBlob = null;
+
+                if (item.videoPath && zip.file(item.videoPath)) {
+                  vBlob = await zip.file(item.videoPath).async("blob");
+                }
+                if (item.audioPath && zip.file(item.audioPath)) {
+                  aBlob = await zip.file(item.audioPath).async("blob");
+                }
+
+                await DBManager.saveFolder({
+                  id: item.id,
+                  name: item.name,
+                  videoBlob: vBlob,
+                  audioBlob: aBlob,
+                  timestamp: item.timestamp || Date.now(),
+                  orderIndex: item.orderIndex ?? 0
+                });
+              }
+              await AppController.renderSidebar();
+              PlayerEngine.stopAndClear();
+              await updateStorageInfo();
+              updateStatus("✅ Đã nạp thành công ZIP", true);
+              alert("Đã khôi phục trọn gói dữ liệu từ file ZIP!");
+            } catch (err) {
+              alert("Lỗi nạp file ZIP: " + err.message);
+              updateStatus("❌ Lỗi nạp ZIP");
+            }
+          } else {
+            // Nạp JSON chuẩn cũ
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+              try {
+                const data = JSON.parse(e.target.result);
+                await restoreFromPayload(data);
+                updateStatus("✅ Đã nhập dữ liệu từ JSON", true);
+                alert("Đã khôi phục dữ liệu từ file JSON thành công!");
+              } catch (err) {
+                alert("Lỗi nạp file JSON: " + err.message);
+              }
+            };
+            reader.readAsText(file);
           }
         };
 
@@ -552,7 +840,7 @@
               return;
             }
 
-            const hasPermission = await verifyPermission(cachedHandle, false);
+            const hasPermission = await verifyPermission(cachedHandle, false, false);
             if (hasPermission) {
               const file = await cachedHandle.getFile();
               const content = await file.text();
@@ -591,6 +879,7 @@
           }
           await AppController.renderSidebar();
           PlayerEngine.stopAndClear();
+          await updateStorageInfo();
         };
 
         const saveToDisk = (immediate = false) => {
@@ -601,7 +890,7 @@
               if (!cachedHandle) cachedHandle = await DBManager.getFileHandle();
               if (!cachedHandle) return;
 
-              const hasPermission = await verifyPermission(cachedHandle, true);
+              const hasPermission = await verifyPermission(cachedHandle, true, false);
               if (!hasPermission) {
                 updateStatus(`⚠️ Chưa được cấp quyền ghi file`);
                 return;
@@ -611,7 +900,6 @@
               const payload = [];
 
               for (const f of folders) {
-                // TỐI ƯU DUNG LƯỢNG: Chỉ chuyển Base64 nếu file nhỏ hơn 30MB
                 const vB64 = (f.videoBlob && f.videoBlob.size <= MAX_BASE64_SIZE) ? await blobToBase64(f.videoBlob) : null;
                 const aB64 = (f.audioBlob && f.audioBlob.size <= MAX_BASE64_SIZE) ? await blobToBase64(f.audioBlob) : null;
 
@@ -626,7 +914,7 @@
               }
 
               const writable = await cachedHandle.createWritable();
-              await writable.write(JSON.stringify(payload, null, 2));
+              await writable.write(JSON.stringify(payload));
               await writable.close();
               updateStatus(`✅ Đã lưu cấu trúc đĩa D/E (${new Date().toLocaleTimeString('vi-VN')})`, true);
             } catch (err) {
@@ -639,10 +927,10 @@
           else saveTimeout = setTimeout(doSave, 500);
         };
 
-        return { connectFile, autoLoadFromDisk, saveToDisk };
+        return { connectFile, autoLoadFromDisk, saveToDisk, exportZIPPackage, importDataFile };
       })();
 
-      // --- MODULE 2: ĐỘNG CƠ PHÁT MEDIA ---
+      // --- MODULE 2: ĐỘNG CƠ PHÁT MEDIA (KÈM AUDIO VISUALIZER & PIP) ---
       const PlayerEngine = (() => {
         const videoEl = document.getElementById('main-video');
         const imageEl = document.getElementById('main-image');
@@ -650,15 +938,124 @@
         const emptyState = document.getElementById('empty-state');
         const pauseIndicator = document.getElementById('pause-indicator');
         const workspace = document.getElementById('workspace');
+
+        // Custom UI Controls
+        const btnPlay = document.getElementById('ctrl-btn-play');
+        const btnMute = document.getElementById('ctrl-btn-mute');
+        const seekBar = document.getElementById('seek-bar');
+        const volumeBar = document.getElementById('volume-bar');
+        const timeCurrent = document.getElementById('time-current');
+        const timeDuration = document.getElementById('time-duration');
         
         let currentMediaUrl = null;
         let currentAudioUrl = null;
         let isImage = false;
         let isPlaying = false;
+        let syncInterval = null;
+        let isUserSeeking = false;
+
+        // Web Audio API Visualizer Setup
+        let audioCtx = null;
+        let analyser = null;
+        let sourceNode = null;
+        let animFrameId = null;
+
+        const initVisualizer = () => {
+          const canvas = document.getElementById('audio-canvas');
+          if (!canvas) return;
+          const ctx = canvas.getContext('2d');
+
+          const draw = () => {
+            animFrameId = requestAnimationFrame(draw);
+            const width = canvas.width = canvas.clientWidth;
+            const height = canvas.height = canvas.clientHeight;
+            ctx.clearRect(0, 0, width, height);
+
+            if (!analyser || !isPlaying) return;
+
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            analyser.getByteFrequencyData(dataArray);
+
+            const barWidth = (width / bufferLength) * 2.2;
+            let x = 0;
+
+            for (let i = 0; i < bufferLength; i++) {
+              const barHeight = (dataArray[i] / 255) * height;
+              ctx.fillStyle = `rgba(255, 122, 31, ${0.25 + (dataArray[i]/255)*0.75})`;
+              ctx.fillRect(x, height - barHeight, barWidth, barHeight);
+              x += barWidth + 1;
+            }
+          };
+          draw();
+        };
+
+        const connectAudioNodes = () => {
+          if (!audioCtx) {
+            const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtxClass) audioCtx = new AudioCtxClass();
+          }
+          if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume();
+          }
+          if (audioCtx && !sourceNode && audioEl.src) {
+            try {
+              analyser = audioCtx.createAnalyser();
+              analyser.fftSize = 128;
+              sourceNode = audioCtx.createMediaElementSource(audioEl);
+              sourceNode.connect(analyser);
+              analyser.connect(audioCtx.destination);
+            } catch (e) {
+              // Bắt ngoại lệ nếu source đã gắn
+            }
+          }
+        };
+
+        // Bắt lỗi giải mã Codec
+        videoEl.onerror = () => {
+          if (videoEl.src) {
+            alert("⚠️ TRÌNH DUYỆT KHÔNG HỖ TRỢ CODEC VIDEO NÀY: Trình duyệt hoặc Hệ điều hành hiện tại không thể giải mã container/codec của file này (Ví dụ: MKV, HEVC/H.265, AC3). Vui lòng chuyển sang định dạng MP4 (H.264 / AAC).");
+          }
+        };
+        audioEl.onerror = () => {
+          if (audioEl.src) {
+            alert("⚠️ TRÌNH DUYỆT KHÔNG HỖ TRỢ CODEC AUDIO NÀY: Dữ liệu âm thanh sử dụng định dạng chưa được hỗ trợ (Ví dụ: AC3/DTS). Vui lòng sử dụng MP3, AAC hoặc WAV.");
+          }
+        };
+
+        const getMasterElement = () => audioEl.src ? audioEl : (videoEl.src ? videoEl : null);
+
+        const startSyncLoop = () => {
+          stopSyncLoop();
+          syncInterval = setInterval(() => {
+            const master = getMasterElement();
+            if (master && !isUserSeeking) {
+              const dur = master.duration || 0;
+              const cur = master.currentTime || 0;
+
+              timeCurrent.textContent = formatTime(cur);
+              timeDuration.textContent = formatTime(dur);
+              seekBar.max = dur || 100;
+              seekBar.value = cur;
+
+              if (videoEl.src && audioEl.src && !videoEl.paused && !audioEl.paused && videoEl.duration) {
+                const targetVideoTime = audioEl.currentTime % videoEl.duration;
+                const diff = Math.abs(videoEl.currentTime - targetVideoTime);
+                if (diff > 0.2 && diff < videoEl.duration - 0.2) {
+                  videoEl.currentTime = targetVideoTime;
+                }
+              }
+            }
+          }, 250);
+        };
+
+        const stopSyncLoop = () => {
+          if (syncInterval) clearInterval(syncInterval);
+        };
 
         const loadAndPlay = (mediaBlob, audioBlob) => {
-          if (currentMediaUrl) URL.revokeObjectURL(currentMediaUrl);
-          if (currentAudioUrl) URL.revokeObjectURL(currentAudioUrl);
+          if (currentMediaUrl) { URL.revokeObjectURL(currentMediaUrl); currentMediaUrl = null; }
+          if (currentAudioUrl) { URL.revokeObjectURL(currentAudioUrl); currentAudioUrl = null; }
 
           emptyState.style.display = 'none';
 
@@ -696,17 +1093,28 @@
         };
 
         const playAll = () => {
-          if (!isImage && videoEl.src) videoEl.play().catch(e => console.log("Video Play Error", e));
-          if (audioEl.src) audioEl.play().catch(e => console.log("Audio Play Error", e));
-          isPlaying = true;
-          pauseIndicator.style.display = 'none';
+          connectAudioNodes();
+          const vPromise = (!isImage && videoEl.src) ? videoEl.play() : Promise.resolve();
+          const aPromise = audioEl.src ? audioEl.play() : Promise.resolve();
+
+          Promise.all([vPromise, aPromise]).then(() => {
+            isPlaying = true;
+            pauseIndicator.style.display = 'none';
+            btnPlay.textContent = '⏸️';
+            startSyncLoop();
+          }).catch(e => {
+            console.log("Trình duyệt chặn Autoplay:", e);
+            pauseAll();
+          });
         };
 
         const pauseAll = () => {
+          stopSyncLoop();
           if (!isImage && videoEl.src) videoEl.pause();
           if (audioEl.src) audioEl.pause();
           isPlaying = false;
           pauseIndicator.style.display = 'block';
+          btnPlay.textContent = '▶️';
         };
 
         const togglePlay = () => {
@@ -714,13 +1122,59 @@
           isPlaying ? pauseAll() : playAll();
         };
 
+        const seekRelative = (seconds) => {
+          const master = getMasterElement();
+          if (!master || !master.duration) return;
+          let newTime = Math.max(0, Math.min(master.duration, master.currentTime + seconds));
+          
+          if (audioEl.src) audioEl.currentTime = newTime;
+          if (videoEl.src && videoEl.duration) videoEl.currentTime = newTime % videoEl.duration;
+          
+          timeCurrent.textContent = formatTime(newTime);
+          seekBar.value = newTime;
+        };
+
+        const changeVolume = (delta) => {
+          let vol = Math.max(0, Math.min(1, audioEl.volume + delta));
+          audioEl.volume = vol;
+          videoEl.volume = vol;
+          volumeBar.value = vol;
+          btnMute.textContent = vol === 0 ? '🔇' : '🔊';
+        };
+
+        const toggleMute = () => {
+          if (audioEl.volume > 0) {
+            audioEl.volume = 0;
+            videoEl.volume = 0;
+            volumeBar.value = 0;
+            btnMute.textContent = '🔇';
+          } else {
+            audioEl.volume = 1;
+            videoEl.volume = 1;
+            volumeBar.value = 1;
+            btnMute.textContent = '🔊';
+          }
+        };
+
+        const togglePiP = async () => {
+          try {
+            if (document.pictureInPictureElement) {
+              await document.exitPictureInPicture();
+            } else if (videoEl && videoEl.src) {
+              await videoEl.requestPictureInPicture();
+            } else {
+              alert("Chế độ cửa sổ ghim nổi chỉ hỗ trợ khi đang phát Video!");
+            }
+          } catch (err) {
+            console.error("Lỗi kích hoạt PiP:", err);
+          }
+        };
+
         const stopAndClear = () => {
           pauseAll();
           
-          if (currentMediaUrl) URL.revokeObjectURL(currentMediaUrl);
-          if (currentAudioUrl) URL.revokeObjectURL(currentAudioUrl);
-          currentMediaUrl = null;
-          currentAudioUrl = null;
+          if (currentMediaUrl) { URL.revokeObjectURL(currentMediaUrl); currentMediaUrl = null; }
+          if (currentAudioUrl) { URL.revokeObjectURL(currentAudioUrl); currentAudioUrl = null; }
 
           videoEl.removeAttribute('src');
           imageEl.removeAttribute('src');
@@ -729,6 +1183,10 @@
           imageEl.style.display = 'none';
           emptyState.style.display = 'block';
           pauseIndicator.style.display = 'none';
+          btnPlay.textContent = '▶️';
+          timeCurrent.textContent = '00:00';
+          timeDuration.textContent = '00:00';
+          seekBar.value = 0;
         };
         
         const toggleFullscreen = () => {
@@ -739,7 +1197,31 @@
           }
         };
 
-        return { loadAndPlay, togglePlay, stopAndClear, toggleFullscreen };
+        // Gắn sự kiện cho các nút điều khiển Custom
+        seekBar.addEventListener('mousedown', () => isUserSeeking = true);
+        seekBar.addEventListener('mouseup', () => isUserSeeking = false);
+        seekBar.addEventListener('input', (e) => {
+          const targetTime = parseFloat(e.target.value);
+          if (audioEl.src) audioEl.currentTime = targetTime;
+          if (videoEl.src && videoEl.duration) videoEl.currentTime = targetTime % videoEl.duration;
+          timeCurrent.textContent = formatTime(targetTime);
+        });
+
+        volumeBar.addEventListener('input', (e) => {
+          const vol = parseFloat(e.target.value);
+          audioEl.volume = vol;
+          videoEl.volume = vol;
+          btnMute.textContent = vol === 0 ? '🔇' : '🔊';
+        });
+
+        btnMute.addEventListener('click', (e) => { e.stopPropagation(); toggleMute(); });
+        btnPlay.addEventListener('click', (e) => { e.stopPropagation(); togglePlay(); });
+        document.getElementById('ctrl-btn-pip').addEventListener('click', (e) => { e.stopPropagation(); togglePiP(); });
+        document.getElementById('ctrl-btn-fullscreen').addEventListener('click', (e) => { e.stopPropagation(); toggleFullscreen(); });
+
+        initVisualizer();
+
+        return { loadAndPlay, togglePlay, stopAndClear, toggleFullscreen, seekRelative, changeVolume, toggleMute, togglePiP };
       })();
 
       // --- MODULE 3: ĐIỀU KHIỂN GIAO DIỆN & LOGIC CHÍNH ---
@@ -758,8 +1240,21 @@
           await DBManager.init();
           setupTheme();
           setupEvents();
+          
+          SyncBroadcast.init(async (data) => {
+            if (data.action === 'REFRESH_SIDEBAR') {
+              await renderSidebar();
+              if (data.payload?.deletedId && activeFolderId === data.payload.deletedId) {
+                activeFolderId = null;
+                titleEl.textContent = 'Chưa chọn thư mục (Click để sửa)';
+                PlayerEngine.stopAndClear();
+              }
+            }
+          });
+
           await renderSidebar();
           await DiskFileSystemManager.autoLoadFromDisk();
+          await updateStorageInfo();
         };
 
         const setupTheme = () => {
@@ -806,12 +1301,16 @@
               if (confirm(`Xóa thư mục "${f.name}"? Dữ liệu bên trong sẽ bị gỡ bỏ.`)) {
                 await DBManager.deleteFolder(f.id);
                 DiskFileSystemManager.saveToDisk();
-                if (activeFolderId === f.id) {
+                
+                const deletedId = f.id;
+                if (activeFolderId === deletedId) {
                   activeFolderId = null;
                   titleEl.textContent = 'Chưa chọn thư mục (Click để sửa)';
                   PlayerEngine.stopAndClear();
                 }
-                renderSidebar();
+                await renderSidebar();
+                await updateStorageInfo();
+                SyncBroadcast.notify('REFRESH_SIDEBAR', { deletedId });
               }
             });
             
@@ -862,24 +1361,19 @@
                const isBelow = e.clientY >= rect.top + rect.height / 2;
 
                const dragIdx = folders.findIndex(x => x.id === draggedFolderId);
-               let dropIdx = folders.findIndex(x => x.id === f.id);
-
                const [movedItem] = folders.splice(dragIdx, 1);
                
-               dropIdx = folders.findIndex(x => x.id === f.id);
+               let dropIdx = folders.findIndex(x => x.id === f.id);
                if (isBelow) {
                  folders.splice(dropIdx + 1, 0, movedItem);
                } else {
                  folders.splice(dropIdx, 0, movedItem);
                }
                
-               await Promise.all(folders.map((folder, index) => {
-                  folder.orderIndex = index;
-                  return DBManager.saveFolder(folder);
-               }));
-               
+               await DBManager.updateFoldersOrder(folders);
                DiskFileSystemManager.saveToDisk();
-               renderSidebar();
+               await renderSidebar();
+               SyncBroadcast.notify('REFRESH_SIDEBAR');
             });
 
             folderListEl.appendChild(li);
@@ -891,32 +1385,67 @@
           renderSidebar(); 
           
           const folder = await DBManager.getFolder(id);
-          titleEl.textContent = folder.name;
-          
-          PlayerEngine.loadAndPlay(folder.videoBlob, folder.audioBlob);
+          if (activeFolderId === id && folder) {
+            titleEl.textContent = folder.name;
+            PlayerEngine.loadAndPlay(folder.videoBlob, folder.audioBlob);
+          }
         };
 
         const setupEvents = () => {
           const workspace = document.getElementById('workspace');
           
           document.getElementById('btn-disk-connect').addEventListener('click', DiskFileSystemManager.connectFile);
+          document.getElementById('btn-export-zip').addEventListener('click', DiskFileSystemManager.exportZIPPackage);
+          
+          const fallbackInput = document.getElementById('fallback-file-input');
+          document.getElementById('btn-import-zip').addEventListener('click', () => fallbackInput.click());
+          fallbackInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) DiskFileSystemManager.importDataFile(e.target.files[0]);
+          });
 
+          // BỘ PHÍM TẮT ĐIỀU HƯỚNG CHUYÊN NGHIỆP
           document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') {
-              if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
-              e.preventDefault();
-              PlayerEngine.togglePlay();
+            if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+
+            switch (e.code) {
+              case 'Space':
+                e.preventDefault();
+                PlayerEngine.togglePlay();
+                break;
+              case 'ArrowLeft':
+                e.preventDefault();
+                PlayerEngine.seekRelative(-5);
+                break;
+              case 'ArrowRight':
+                e.preventDefault();
+                PlayerEngine.seekRelative(5);
+                break;
+              case 'ArrowUp':
+                e.preventDefault();
+                PlayerEngine.changeVolume(0.1);
+                break;
+              case 'ArrowDown':
+                e.preventDefault();
+                PlayerEngine.changeVolume(-0.1);
+                break;
+              case 'KeyF':
+                e.preventDefault();
+                PlayerEngine.toggleFullscreen();
+                break;
+              case 'KeyM':
+                e.preventDefault();
+                PlayerEngine.toggleMute();
+                break;
+              case 'KeyP':
+                e.preventDefault();
+                PlayerEngine.togglePiP();
+                break;
             }
           });
 
           workspace.addEventListener('dblclick', (e) => {
-            if (e.target.closest('#btn-fullscreen')) return; 
+            if (e.target.closest('#media-controls') || e.target.closest('#btn-fullscreen')) return; 
             PlayerEngine.togglePlay();
-          });
-          
-          document.getElementById('btn-fullscreen').addEventListener('click', (e) => {
-            e.stopPropagation(); 
-            PlayerEngine.toggleFullscreen();
           });
 
           document.getElementById('btn-new-folder').addEventListener('click', () => openModal());
@@ -929,8 +1458,22 @@
 
           document.getElementById('btn-cancel').addEventListener('click', closeModal);
 
-          setupDropZone('drop-video', 'input-video', 'display-video-name', (file) => tempVideoBlob = file, ['video/', 'image/']);
-          setupDropZone('drop-audio', 'input-audio', 'display-audio-name', (file) => tempAudioBlob = file, ['audio/', 'video/']);
+          document.getElementById('btn-remove-video').addEventListener('click', () => {
+            tempVideoBlob = null;
+            document.getElementById('display-video-name').textContent = '';
+            document.getElementById('input-video').value = '';
+            document.getElementById('btn-remove-video').style.display = 'none';
+          });
+
+          document.getElementById('btn-remove-audio').addEventListener('click', () => {
+            tempAudioBlob = null;
+            document.getElementById('display-audio-name').textContent = '';
+            document.getElementById('input-audio').value = '';
+            document.getElementById('btn-remove-audio').style.display = 'none';
+          });
+
+          setupDropZone('drop-video', 'input-video', 'display-video-name', 'btn-remove-video', (file) => tempVideoBlob = file, ['video/', 'image/']);
+          setupDropZone('drop-audio', 'input-audio', 'display-audio-name', 'btn-remove-audio', (file) => tempAudioBlob = file, ['audio/', 'video/']);
 
           document.getElementById('btn-save').addEventListener('click', async () => {
             const name = document.getElementById('input-folder-name').value.trim() || 'Thư mục không tên';
@@ -945,32 +1488,40 @@
             if (currentEditingId) {
               folderData.id = currentEditingId; 
               const oldFolder = await DBManager.getFolder(currentEditingId);
-              if (oldFolder.orderIndex !== undefined) folderData.orderIndex = oldFolder.orderIndex;
+              if (oldFolder && oldFolder.orderIndex !== undefined) folderData.orderIndex = oldFolder.orderIndex;
             } else {
               const allFolders = await DBManager.getAllFolders();
               folderData.orderIndex = allFolders.length; 
             }
 
-            const savedId = await DBManager.saveFolder(folderData);
-            DiskFileSystemManager.saveToDisk();
-            closeModal();
-            await renderSidebar();
-            
-            if (!currentEditingId || currentEditingId === activeFolderId) {
-               selectFolder(savedId);
+            try {
+              const savedId = await DBManager.saveFolder(folderData);
+              DiskFileSystemManager.saveToDisk();
+              closeModal();
+              await renderSidebar();
+              await updateStorageInfo();
+              SyncBroadcast.notify('REFRESH_SIDEBAR');
+              
+              if (!currentEditingId || currentEditingId === activeFolderId) {
+                 selectFolder(savedId);
+              }
+            } catch (err) {
+              alert("⛔ BÁO LỖI LƯU TRỮ: Bộ nhớ trình duyệt (IndexedDB) đã đầy hoặc xảy ra lỗi đĩa. Vui lòng xóa bớt thư mục cũ.");
+              console.error("Lỗi lưu IndexedDB:", err);
             }
           });
         };
 
-        const setupDropZone = (zoneId, inputId, displayId, callback, expectedMimes) => {
+        const setupDropZone = (zoneId, inputId, displayId, removeBtnId, callback, expectedMimes) => {
           const zone = document.getElementById(zoneId);
           const input = document.getElementById(inputId);
           const display = document.getElementById(displayId);
+          const removeBtn = document.getElementById(removeBtnId);
 
           zone.addEventListener('click', () => input.click());
 
           input.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) handleFile(e.target.files[0], display, callback, expectedMimes);
+            if (e.target.files.length > 0) handleFile(e.target.files[0], display, removeBtn, callback, expectedMimes);
           });
 
           zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
@@ -978,11 +1529,11 @@
           zone.addEventListener('drop', (e) => {
             e.preventDefault();
             zone.classList.remove('dragover');
-            if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0], display, callback, expectedMimes);
+            if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0], display, removeBtn, callback, expectedMimes);
           });
         };
 
-        const handleFile = (file, displayEl, callback, expectedMimes) => {
+        const handleFile = (file, displayEl, removeBtn, callback, expectedMimes) => {
           const mimes = Array.isArray(expectedMimes) ? expectedMimes : [expectedMimes];
           const isValid = mimes.some(mime => file.type.startsWith(mime));
 
@@ -991,6 +1542,7 @@
             return;
           }
           displayEl.textContent = `✅ Đã tải lên: ${file.name}`;
+          removeBtn.style.display = 'inline-block';
           callback(file);
         };
 
@@ -1005,6 +1557,9 @@
           document.getElementById('display-video-name').textContent = tempVideoBlob ? '✅ (Giữ nguyên file cũ)' : '';
           document.getElementById('display-audio-name').textContent = tempAudioBlob ? '✅ (Giữ nguyên file cũ)' : '';
           
+          document.getElementById('btn-remove-video').style.display = tempVideoBlob ? 'inline-block' : 'none';
+          document.getElementById('btn-remove-audio').style.display = tempAudioBlob ? 'inline-block' : 'none';
+
           document.getElementById('input-video').value = '';
           document.getElementById('input-audio').value = '';
 
@@ -1013,6 +1568,10 @@
 
         const closeModal = () => {
           modal.classList.remove('active');
+          tempVideoBlob = null;
+          tempAudioBlob = null;
+          document.getElementById('input-video').value = '';
+          document.getElementById('input-audio').value = '';
         };
 
         return { init, renderSidebar };

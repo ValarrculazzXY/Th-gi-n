@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vinyl Room – Trình phát nhạc</title>
+<style>
+/* ===== Biến màu (Dark mode mặc định, tối sang trọng) ===== */
+:root{
+  --bg:#0e0b14; --panel:rgba(255,255,255,.06); --line:rgba(255,255,255,.12);
+  --text:#f3eefc; --muted:#a79fba; --accent:#ffb454; --accent2:#ff6b9a;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;color:var(--text);background:var(--bg);
+  font-family:"Segoe UI","Be Vietnam Pro",system-ui,-apple-system,sans-serif;
+  background-image:radial-gradient(700px 500px at 15% 10%,rgba(255,107,154,.22),transparent 60%),
+  radial-gradient(800px 600px at 90% 90%,rgba(255,180,84,.16),transparent 60%)}
+.app{max-width:1100px;margin:0 auto;padding:20px;display:grid;grid-template-columns:1.15fr 1fr;gap:20px}
+@media(max-width:860px){.app{grid-template-columns:1fr}}
+.glass{background:var(--panel);border:1px solid var(--line);border-radius:22px;
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);padding:22px}
+h1{font-family:Georgia,"Times New Roman",serif;font-weight:400;font-size:26px;margin:0 0 4px;letter-spacing:.5px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 14px}
+
+/* ===== Đĩa than ===== */
+.stage{display:flex;flex-direction:column;align-items:center}
+.deck{position:relative;width:min(300px,70vw);aspect-ratio:1;margin:8px 0 14px}
+.vinyl{position:absolute;inset:0;border-radius:50%;animation:spin 6s linear infinite;animation-play-state:paused;
+  box-shadow:0 20px 50px rgba(0,0,0,.6)}
+.vinyl.playing{animation-play-state:running}
+@keyframes spin{to{transform:rotate(360deg)}}
+.vinyl .label{position:absolute;inset:33%;border-radius:50%;display:grid;place-items:center;
+  font-family:Georgia,serif;font-size:clamp(12px,3.2vw,15px);text-align:center;padding:4px;overflow:hidden}
+.vinyl .hole{position:absolute;inset:48.5%;border-radius:50%;background:var(--bg)}
+/* 1. Cổ điển đen */
+.t-classic{background:repeating-radial-gradient(circle,#111 0 2px,#1b1b1f 3px 4px),#111;}
+.t-classic::after{content:"";position:absolute;inset:0;border-radius:50%;
+  background:conic-gradient(from 20deg,transparent 0 20%,rgba(255,255,255,.14) 25%,transparent 30% 70%,rgba(255,255,255,.14) 75%,transparent 80%)}
+.t-classic .label{background:radial-gradient(#e8553d,#a62a18);color:#fff}
+/* 2. Neon phát sáng */
+.t-neon{background:repeating-radial-gradient(circle,#07070d 0 3px,#0d0d1c 4px 5px);
+  box-shadow:0 0 0 3px #00f0ff,0 0 30px 6px #00f0ff,0 0 70px 14px rgba(255,0,200,.55),inset 0 0 25px rgba(0,240,255,.5)}
+.t-neon .label{background:linear-gradient(135deg,#00f0ff,#ff00c8);color:#07070d;font-weight:700;box-shadow:0 0 18px #ff00c8}
+/* 3. Retro gỗ */
+.t-wood{background:repeating-radial-gradient(circle,#4a2c14 0 2px,#5e3a1c 3px 4px),#4a2c14;box-shadow:0 0 0 6px #7a4a22,0 20px 50px rgba(0,0,0,.6)}
+.t-wood .label{background:radial-gradient(#e9c98f,#b98a49);color:#3a210e}
+/* 4. Cyberpunk / Anime */
+.t-cyber{background:conic-gradient(#ff2a6d,#d1f7ff,#05d9e8,#7a2cff,#ff2a6d);box-shadow:0 0 40px rgba(255,42,109,.5)}
+.t-cyber::after{content:"";position:absolute;inset:6%;border-radius:50%;
+  background:repeating-radial-gradient(circle,rgba(5,1,26,.9) 0 2px,rgba(5,1,26,.7) 3px 4px)}
+.t-cyber .label{z-index:2;background:#05011a;color:#05d9e8;border:2px solid #ff2a6d;font-weight:700;letter-spacing:2px}
+.t-cyber .hole{z-index:3}
+/* Cần gạt (tonearm) */
+.arm{position:absolute;right:-6%;top:-4%;width:36%;height:8px;border-radius:6px;background:linear-gradient(90deg,#bbb,#666);
+  transform-origin:92% 50%;transform:rotate(-8deg);transition:transform .6s;box-shadow:0 4px 10px rgba(0,0,0,.5)}
+.arm.on{transform:rotate(28deg)}
+
+.chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:10px}
+.chip{border:1px solid var(--line);background:transparent;color:var(--muted);padding:6px 12px;border-radius:99px;cursor:pointer;font-size:12.5px}
+.chip.active{color:#1a1208;background:var(--accent);border-color:var(--accent);font-weight:600}
+.chip:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.title{font-size:20px;margin:6px 0 2px;text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+canvas{width:100%;height:70px;display:block;margin:6px 0}
+
+/* ===== Thanh tiến trình & âm lượng ===== */
+.seek{display:flex;align-items:center;gap:10px;width:100%;font-variant-numeric:tabular-nums;font-size:12px;color:var(--muted)}
+input[type=range]{-webkit-appearance:none;appearance:none;height:5px;border-radius:5px;outline:none;cursor:pointer;flex:1;
+  background:linear-gradient(90deg,var(--accent) var(--p,0%),rgba(255,255,255,.16) var(--p,0%))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#fff;border:0}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#fff;border:0}
+.ctrls{display:flex;align-items:center;justify-content:center;gap:12px;margin:12px 0}
+button.ic{background:transparent;border:0;color:var(--text);width:42px;height:42px;border-radius:50%;cursor:pointer;display:grid;place-items:center}
+button.ic:hover{background:rgba(255,255,255,.1)}
+button.ic.on{color:var(--accent)}
+button.ic svg{width:22px;height:22px;fill:currentColor}
+button.play{width:62px;height:62px;background:var(--accent);color:#1a1208}
+button.play:hover{background:var(--accent)}
+.vol{display:flex;align-items:center;gap:8px;width:100%;max-width:260px}
+.tools{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:12px;width:100%}
+.tools label{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+select{background:#1b1626;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:6px 8px;font-size:12.5px}
+#timerLeft{color:var(--accent);font-size:12px;min-width:44px}
+
+/* ===== Danh sách phát ===== */
+.drop{border:2px dashed var(--line);border-radius:16px;padding:18px;text-align:center;color:var(--muted);cursor:pointer;transition:.2s;margin-bottom:14px}
+.drop.over,.drop:hover{border-color:var(--accent);color:var(--text);background:rgba(255,180,84,.08)}
+.drop b{color:var(--text)}
+ul{list-style:none;margin:0;padding:0;max-height:420px;overflow-y:auto}
+li{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;cursor:pointer;border:1px solid transparent}
+li:hover{background:rgba(255,255,255,.06)}
+li.cur{background:rgba(255,180,84,.12);border-color:rgba(255,180,84,.4)}
+li .n{width:22px;color:var(--muted);font-size:12px;text-align:center}
+li .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+li .d{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+li .x{background:none;border:0;color:var(--muted);cursor:pointer;font-size:16px}
+li .x:hover{color:var(--accent2)}
+.empty{color:var(--muted);text-align:center;padding:24px 0;font-size:14px}
+button.ic{position:relative}
+li:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.bk #status button{flex:none;padding:3px 10px;margin-left:6px;font-size:12px;color:var(--accent)}
+#usage{font-size:11.5px;color:var(--muted);margin-top:2px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.62);display:grid;place-items:center;z-index:50;padding:20px}
+.modal[hidden]{display:none}
+.modal .box{background:#1b1626;border:1px solid var(--line);border-radius:18px;padding:22px;max-width:420px;width:100%}
+.modal p{margin:0 0 18px;line-height:1.55;white-space:pre-line;font-size:14px}
+.modal .mrow{display:flex;gap:10px;justify-content:flex-end}
+.modal button{border:1px solid var(--line);background:transparent;color:var(--text);padding:9px 16px;border-radius:12px;cursor:pointer;font-size:13px}
+.modal button.pri{background:var(--accent);color:#1a1208;border-color:var(--accent);font-weight:600}
+.bk{margin-top:16px;border-top:1px solid var(--line);padding-top:14px}
+.bk h2{font-size:15px;margin:0 0 6px;font-weight:600}
+.bk .row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.bk button{flex:1 1 140px;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--text);padding:9px 10px;border-radius:12px;cursor:pointer;font-size:12.5px}
+.bk button:hover{border-color:var(--accent)}
+.bk small{color:var(--muted);display:block;line-height:1.5}
+#status{font-size:12.5px;color:var(--accent);min-height:18px;line-height:1.4}
+li.miss .t{opacity:.55}
+li.miss .d{color:var(--accent2)}
+#vid{display:none}
+@media(prefers-reduced-motion:reduce){.vinyl{animation-duration:20s}}
+</style>
+</head>
+<body>
+<main class="app">
+
+  <!-- ===== Cột trái: Trình phát ===== -->
+  <section class="glass stage">
+    <h1>Vinyl Room</h1>
+    <p class="sub">Thêm nhạc từ máy, chọn một chiếc đĩa và nghe thôi.</p>
+
+    <div class="chips" id="vinylChips" role="group" aria-label="Chọn loại đĩa">
+      <button class="chip active" data-v="classic">Cổ điển đen</button>
+      <button class="chip" data-v="neon">Neon</button>
+      <button class="chip" data-v="wood">Retro gỗ</button>
+      <button class="chip" data-v="cyber">Cyberpunk</button>
+    </div>
+
+    <div class="deck">
+      <div class="vinyl t-classic" id="vinyl">
+        <div class="label" id="vLabel">VINYL</div>
+        <div class="hole"></div>
+      </div>
+      <div class="arm" id="arm"></div>
+    </div>
+
+    <div class="title" id="title">Chưa có bài nào</div>
+    <canvas id="viz"></canvas>
+
+    <div class="seek">
+      <span id="cur">0:00</span>
+      <input type="range" id="seek" min="0" max="100" step="0.1" value="0" aria-label="Tua bài hát">
+      <span id="dur">0:00</span>
+    </div>
+
+    <div class="ctrls">
+      <button class="ic" id="shuffle" title="Phát ngẫu nhiên" aria-label="Phát ngẫu nhiên"></button>
+      <button class="ic" id="prev" title="Bài trước" aria-label="Bài trước"></button>
+      <button class="ic play" id="play" title="Phát / Tạm dừng" aria-label="Phát / Tạm dừng"></button>
+      <button class="ic" id="next" title="Bài tiếp" aria-label="Bài tiếp"></button>
+      <button class="ic" id="repeat" title="Lặp lại: tắt" aria-label="Lặp lại"></button>
+    </div>
+
+    <div class="vol">
+      <button class="ic" id="mute" title="Tắt tiếng" aria-label="Tắt tiếng"></button>
+      <input type="range" id="volume" min="0" max="1" step="0.01" value="0.8" aria-label="Âm lượng">
+    </div>
+
+    <div class="tools">
+      <label>Âm sắc
+        <select id="eq">
+          <option value="flat">Mặc định</option>
+          <option value="pop">Pop</option>
+          <option value="rock">Rock</option>
+          <option value="bass">Bass Boost</option>
+          <option value="classic">Classic</option>
+        </select>
+      </label>
+      <label>Hẹn giờ tắt
+        <select id="sleep">
+          <option value="0">Không</option>
+          <option value="15">15 phút</option>
+          <option value="30">30 phút</option>
+          <option value="60">60 phút</option>
+        </select>
+        <span id="timerLeft"></span>
+      </label>
+    </div>
+  </section>
+
+  <!-- ===== Cột phải: Nhập file & Playlist ===== -->
+  <section class="glass">
+    <h1>Danh sách phát</h1>
+    <p class="sub" id="count">0 bài</p>
+    <div class="drop" id="drop" tabindex="0" role="button">
+      <b>Kéo thả file vào đây</b> hoặc bấm để chọn<br>
+      <small>Hỗ trợ .mp3 và .mp4 (mp4 chỉ phát phần âm thanh)</small>
+    </div>
+    <input type="file" id="file" accept=".mp3,.mp4,audio/*,video/mp4" multiple hidden>
+    <ul id="list"></ul>
+
+    <!-- Khu sao lưu & khôi phục (học theo kyniemnote) -->
+    <div class="bk">
+      <h2>Sao lưu &amp; khôi phục</h2>
+      <div id="status" role="status"></div>
+      <div id="usage"></div>
+      <div class="row">
+        <button id="bkFull" title="Xuất JSON kèm âm thanh (file ≤ 15MB được nhúng vào)">💾 Xuất kho (đầy đủ)</button>
+        <button id="bkLight" title="Chỉ xuất tên bài, thời lượng và cài đặt – file rất nhẹ">📋 Xuất danh sách</button>
+        <button id="bkImport" title="Khôi phục từ file JSON đã xuất">📂 Nhập kho</button>
+        <button id="bkDisk" style="flex-basis:100%" title="Chọn file .json trên ổ đĩa để tự động lưu mỗi khi có thay đổi">📁 Liên kết file đĩa (.json)</button>
+      </div>
+      <input type="file" id="jsonFile" accept=".json,application/json" hidden>
+      <small>Nhạc đã thêm được tự lưu trong trình duyệt nên mở lại vẫn còn. File JSON là bản dự phòng khi xóa dữ liệu trình duyệt hoặc đổi máy. Bài nào quá 15MB chỉ lưu tên, bạn thêm lại file đó là tự khớp vào danh sách.</small>
+    </div>
+  </section>
+
+  <!-- Thẻ phát: dùng <audio> nên video của mp4 không bao giờ hiển thị, chỉ lấy âm thanh -->
+  <audio id="audio" preload="metadata"></audio>
+
+  <!-- Hộp xác nhận trong trang (thay confirm/alert vì trình duyệt có thể chặn hộp thoại gốc) -->
+  <div class="modal" id="modal" hidden role="dialog" aria-modal="true">
+    <div class="box"><p id="mMsg"></p><div class="mrow"><button id="mNo"></button><button id="mYes" class="pri"></button></div></div>
+  </div>
+</main>
+
+<script>
+(() => {
+  /* ===== Bộ icon SVG nội tuyến (chạy offline) ===== */
+  const ICON = {
+    play:'M8 5v14l11-7z', pause:'M6 5h4v14H6zM14 5h4v14h-4z',
+    next:'M6 18l8.5-6L6 6v12zM16 6v12h2V6z', prev:'M6 6h2v12H6zM9.5 12l8.5 6V6z',
+    shuffle:'M10.6 9.2L5 3.6 3.6 5l5.6 5.6 1.4-1.4zM14.5 4l2.5 2.5L3.6 19.9 5 21.3 18.4 7.9 21 10.5V4h-6.5zM14.8 13.4l-1.4 1.4 3.6 3.6-2.5 2.6H21v-6.5l-2.5 2.5-3.7-3.6z',
+    repeat:'M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z',
+    vol:'M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4z',
+    mute:'M16.5 12A4.5 4.5 0 0 0 14 8v2.2l2.5 2.5V12zM19 12c0 .9-.2 1.8-.5 2.600l1.500 1.500A8.800 8.800 0 0 0 21 12c0-4.300-3-7.900-7-8.800v2.100c2.900.9 5 3.500 5 6.700zM4.300 3L3 4.300 7.700 9H3v6h4l5 5v-6.700l4.200 4.200c-.7.500-1.400.9-2.200 1.100v2.100a9 9 0 0 0 3.700-1.800l2 2 1.300-1.300L4.300 3zM12 4L9.900 6.100 12 8.200V4z'
+  };
+  const svg = n => `<svg viewBox="0 0 24 24"><path d="${ICON[n]}"/></svg>`;
+
+  const $ = id => document.getElementById(id);
+  const audio = $('audio'), listEl = $('list');
+  const btn = { play:$('play'), prev:$('prev'), next:$('next'), shuffle:$('shuffle'), repeat:$('repeat'), mute:$('mute') };
+  btn.prev.innerHTML = svg('prev'); btn.next.innerHTML = svg('next');
+  btn.shuffle.innerHTML = svg('shuffle'); btn.repeat.innerHTML = svg('repeat');
+  btn.play.innerHTML = svg('play'); btn.mute.innerHTML = svg('vol');
+
+  /* ===== Trạng thái ===== */
+  let tracks = [];          // {name, url, dur}
+  let idx = -1;             // bài đang chọn
+  let shuffleOn = false;
+  let repeatMode = 0;       // 0: tắt, 1: cả list, 2: một bài
+  let sleepTimer = null, sleepEnd = 0, tick = null;
+  let initResolve; const initDone = new Promise(r => { initResolve = r; });   // addFiles chờ nạp xong dữ liệu cũ
+
+  const fmt = s => isFinite(s) ? Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2,'0') : '0:00';
+  const setFill = el => el.style.setProperty('--p', (el.value - el.min) / (el.max - el.min) * 100 + '%');
+
+  /* ===== Đổi loại đĩa ===== */
+  let vinylTheme = 'classic';
+  function applyVinyl(v){
+    vinylTheme = v;
+    document.querySelectorAll('.chip').forEach(x => x.classList.toggle('active', x.dataset.v === v));
+    $('vinyl').className = 'vinyl t-' + v + (audio.paused ? '' : ' playing');
+  }
+  $('vinylChips').addEventListener('click', e => {
+    const c = e.target.closest('.chip'); if (!c) return;
+    applyVinyl(c.dataset.v); saveSettings();
+  });
+
+  /* ===== Nhập file (chọn hoặc kéo thả) ===== */
+  const drop = $('drop');
+  drop.onclick = () => $('file').click();
+  drop.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('file').click(); } };
+  $('file').onchange = e => { addFiles(e.target.files); e.target.value = ''; };
+  ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => addFiles(e.dataTransfer.files));
+  // Chặn trình duyệt tự mở file khi bạn thả trượt ra ngoài ô thả
+  ['dragover', 'drop'].forEach(ev => addEventListener(ev, e => e.preventDefault()));
+
+  async function addFiles(files){
+    const arr = [...files];   // sao chép ngay vì danh sách kéo thả bị xóa sau sự kiện
+    await initDone;
+    const ok = arr.filter(f => /\.(mp3|mp4)$/i.test(f.name) || f.type.startsWith('audio/') || f.type === 'video/mp4');
+    let added = 0, relinked = 0, dup = 0, bigMp4 = 0;
+    for (const f of ok){
+      const name = f.name.replace(/\.(mp3|mp4)$/i, '');
+      // Bỏ qua file trùng (cùng tên và dung lượng)
+      if (tracks.some(x => !x.missing && x.name === name && x.size === f.size)){ dup++; continue; }
+      // Nếu có bài "thiếu file" trùng tên (sau khi nhập JSON) thì gắn file vào đúng bài đó
+      if (/\.mp4$/i.test(f.name) && f.size > 50 * 1048576) bigMp4++;
+      const ghost = tracks.find(x => x.missing && x.name.toLowerCase() === name.toLowerCase());
+      const t = ghost || { id: uid(), name, added: Date.now() + added, dur: 0 };
+      t.blob = f; t.type = f.type; t.size = f.size; t.missing = false; t.url = URL.createObjectURL(f);
+      if (ghost) relinked++; else { tracks.push(t); added++; }
+      probeDuration(t);
+      await safeDb(async () => { await DB.putBlob(t); await DB.putMeta(t); });
+    }
+    renderList(); persistSoon();
+    if (idx === -1 && tracks.length){ const i = tracks.findIndex(x => !x.missing); if (i >= 0) loadTrack(i, false); }
+    else if (idx >= 0 && tracks[idx] && !tracks[idx].missing && !audio.getAttribute('src')) loadTrack(idx, false);
+    if (added || relinked || dup) setStatus(`Đã thêm ${added} bài` + (relinked ? `, gắn lại ${relinked} bài thiếu file` : '') + (dup ? `, bỏ qua ${dup} bài trùng` : '') + '.' + (bigMp4 ? ` ⚠️ ${bigMp4} file mp4 lớn: app lưu nguyên cả video nên rất tốn dung lượng, nên dùng bản mp3 nếu có.` : ''));
+    updateUsage();
+  }
+
+  /* ===== Hiển thị playlist ===== */
+  function renderList(){
+    $('count').textContent = tracks.length + ' bài';
+    if (!tracks.length){ listEl.innerHTML = '<div class="empty">Chưa có bài nào. Thêm file để bắt đầu.</div>'; return; }
+    const hadFocus = document.activeElement && document.activeElement.parentNode === listEl ? [...listEl.children].indexOf(document.activeElement) : -1;
+    listEl.innerHTML = '';
+    tracks.forEach((t, i) => {
+      const li = document.createElement('li');
+      li.className = (i === idx ? 'cur ' : '') + (t.missing ? 'miss' : '');
+      li.innerHTML = `<span class="n">${i === idx && !audio.paused ? '♪' : i + 1}</span><span class="t"></span><span class="d">${t.missing ? 'thiếu file' : (t.dur ? fmt(t.dur) : '')}</span><button class="x" aria-label="Xóa bài">✕</button>`;
+      li.querySelector('.t').textContent = t.name;
+      li.onclick = e => { if (e.target.classList.contains('x')) removeTrack(i); else loadTrack(i, true); };
+      li.tabIndex = 0; li.setAttribute('role', 'button');
+      li.onkeydown = e => {   // Enter/Space = phát, Delete = xóa
+        if (e.target !== li) return;
+        if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); loadTrack(i, true); }
+        else if (e.key === 'Delete'){ removeTrack(i); }
+      };
+      listEl.appendChild(li);
+    });
+    if (hadFocus >= 0 && listEl.children[hadFocus]) listEl.children[hadFocus].focus();   // renderList dựng lại DOM nên trả focus về chỗ cũ
+  }
+  let pending = null, undoTimer = null;   // bài vừa xóa, giữ 6 giây để hoàn tác
+  function removeTrack(i){
+    finalizePending();
+    const t = tracks[i], wasCur = i === idx;
+    tracks.splice(i, 1);
+    if (wasCur){ audio.pause(); audio.removeAttribute('src'); idx = -1; } else if (i < idx) idx--;
+    pending = { t, i };
+    if (wasCur){ if (tracks.length) loadTrack(Math.min(i, tracks.length - 1), false); else { resetUI(); renderList(); } } else renderList();
+    notify('Đã xóa "' + t.name + '".', 'Hoàn tác', undoRemove);
+    undoTimer = setTimeout(finalizePending, 6000);
+    persistSoon();
+  }
+  function finalizePending(){   // hết hạn hoàn tác: xóa thật khỏi trình duyệt
+    clearTimeout(undoTimer); if (!pending) return;
+    const t = pending.t; pending = null;
+    if (t.url) URL.revokeObjectURL(t.url);
+    safeDb(() => DB.del(t.id)).then(updateUsage);
+  }
+  function undoRemove(){
+    if (!pending) return;
+    clearTimeout(undoTimer);
+    const { t, i } = pending; pending = null;
+    tracks.splice(Math.min(i, tracks.length), 0, t);
+    if (idx !== -1 && i <= idx) idx++;
+    if (idx === -1) loadTrack(tracks.indexOf(t), false); else renderList();
+    notify('Đã khôi phục "' + t.name + '".'); persistSoon(); saveSettings();
+  }
+  function resetUI(){ $('title').textContent = 'Chưa có bài nào'; $('vLabel').textContent = 'VINYL'; $('seek').value = 0; setFill($('seek')); $('cur').textContent = $('dur').textContent = '0:00'; syncPlayState(); }
+
+  /* ===== Tải & phát bài ===== */
+  function loadTrack(i, autoplay){
+    if (i === undefined || !tracks[i]) return;
+    idx = i; const t = tracks[i];
+    if (t.missing){   // bài chỉ có thông tin từ JSON, chưa có file âm thanh
+      audio.pause(); audio.removeAttribute('src');
+      $('title').textContent = t.name + ' (thiếu file)'; $('vLabel').textContent = t.name.slice(0, 14);
+      setStatus('Bài "' + t.name + '" chưa có file. Thêm lại đúng file này để tự gắn vào danh sách.');
+      renderList(); saveSettings(); return;
+    }
+    audio.src = t.url;
+    $('title').textContent = t.name;
+    $('vLabel').textContent = t.name.slice(0, 14);
+    renderList(); saveSettings();
+    if (autoplay) play();
+  }
+  async function play(){
+    if (idx === -1) return;
+    if (tracks[idx].missing){ setStatus('Bài "' + tracks[idx].name + '" chưa có file. Thêm lại đúng file này để phát.'); return; }
+    initAudioGraph();
+    if (ctx.state === 'suspended') await ctx.resume();
+    try { await audio.play(); } catch(e){ if (e.name !== 'AbortError') setStatus('⚠️ Không phát được file này (file lỗi hoặc định dạng không được hỗ trợ).'); }
+  }
+  function togglePlay(){ if (idx === -1) { setStatus('Chưa có bài nào. Kéo thả hoặc bấm vào ô thêm nhạc để bắt đầu.'); return; } audio.paused ? play() : audio.pause(); }
+  function pickNext(dir){
+    const ok = tracks.map((t, i) => t.missing ? -1 : i).filter(i => i >= 0);   // chỉ các bài có file
+    if (!ok.length) return;
+    if (shuffleOn && ok.length > 1){ let r; do { r = ok[Math.floor(Math.random() * ok.length)]; } while (r === idx); return r; }
+    let n = idx;
+    do { n = (n + dir + tracks.length) % tracks.length; } while (tracks[n].missing);
+    return n;
+  }
+  btn.play.onclick = () => idx === -1 ? $('file').click() : togglePlay();
+  btn.next.onclick = () => loadTrack(pickNext(1), true);
+  btn.prev.onclick = () => { if (audio.currentTime > 3) audio.currentTime = 0; else loadTrack(pickNext(-1), true); };
+
+  /* Đồng bộ icon, đĩa xoay và cần gạt theo trạng thái phát */
+  function syncPlayState(){
+    const playing = !audio.paused && idx !== -1;
+    btn.play.innerHTML = svg(playing ? 'pause' : 'play');
+    $('vinyl').classList.toggle('playing', playing);
+    $('arm').classList.toggle('on', playing);
+    renderList();
+  }
+  audio.addEventListener('play', syncPlayState);
+  audio.addEventListener('pause', syncPlayState);
+
+  /* Khi hết bài: lặp một bài, lặp cả list, hoặc dừng ở cuối list */
+  audio.addEventListener('ended', () => {
+    if (repeatMode === 2){ audio.currentTime = 0; play(); return; }
+    if (!shuffleOn && repeatMode === 0){   // tắt lặp: dừng khi hết bài cuối có file (kể cả khi cuối danh sách là bài thiếu file)
+      const n = pickNext(1);
+      if (n === undefined || n <= idx){ audio.currentTime = 0; syncPlayState(); return; }
+      loadTrack(n, true); return;
+    }
+    loadTrack(pickNext(1), true);
+  });
+
+  /* ===== Shuffle / Repeat ===== */
+  btn.shuffle.onclick = () => { shuffleOn = !shuffleOn; btn.shuffle.classList.toggle('on', shuffleOn); saveSettings(); };
+  function setRepeat(m){
+    repeatMode = m;
+    btn.repeat.classList.toggle('on', repeatMode > 0);
+    btn.repeat.title = ['Lặp lại: tắt', 'Lặp lại: cả danh sách', 'Lặp lại: một bài'][repeatMode];
+    btn.repeat.innerHTML = svg('repeat') + (repeatMode === 2 ? '<b style="position:absolute;font-size:9px">1</b>' : '');
+  }
+  btn.repeat.onclick = () => { setRepeat((repeatMode + 1) % 3); saveSettings(); };
+
+  /* ===== Thanh tiến trình (có thể tua) ===== */
+  const seek = $('seek');
+  let dragging = false;
+  audio.addEventListener('timeupdate', () => {
+    if (dragging || !audio.duration) return;
+    seek.value = audio.currentTime / audio.duration * 100; setFill(seek);
+    $('cur').textContent = fmt(audio.currentTime);
+  });
+  audio.addEventListener('loadedmetadata', () => { $('dur').textContent = fmt(audio.duration); if (tracks[idx]) { tracks[idx].dur = audio.duration; renderList(); } });
+  seek.addEventListener('input', () => { dragging = true; setFill(seek); $('cur').textContent = fmt(seek.value / 100 * audio.duration); });
+  seek.addEventListener('change', () => { if (audio.duration) audio.currentTime = seek.value / 100 * audio.duration; dragging = false; });
+
+  /* ===== Âm lượng & tắt tiếng ===== */
+  const vol = $('volume');
+  const volLocked = (() => { const a = new Audio(); a.volume = .5; return a.volume !== .5; })();   // iOS: audio.volume chỉ đọc
+  let volLevel = 0.8, gainNode = null;
+  function setVol(v){ volLevel = v; try { audio.volume = volLocked ? 1 : v; } catch (e) {} if (gainNode) gainNode.gain.value = volLocked ? v : 1; }
+  vol.addEventListener('input', () => { setVol(+vol.value); audio.muted = false; updateMute(); });
+  btn.mute.onclick = () => { audio.muted = !audio.muted; updateMute(); };
+  function updateMute(){ const m = audio.muted || volLevel === 0; btn.mute.innerHTML = svg(m ? 'mute' : 'vol'); vol.value = m ? 0 : volLevel; setFill(vol); }
+  setVol(0.8); setFill(vol);
+  vol.addEventListener('change', () => saveSettings());
+
+  /* ===== Web Audio: visualizer + bộ lọc âm thanh ===== */
+  let ctx, analyser, fBass, fMid, fTreble, graphReady = false;
+  function initAudioGraph(){
+    if (graphReady) return;
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const src = ctx.createMediaElementSource(audio);
+    fBass = ctx.createBiquadFilter();   fBass.type = 'lowshelf';  fBass.frequency.value = 200;
+    fMid = ctx.createBiquadFilter();    fMid.type = 'peaking';    fMid.frequency.value = 1000; fMid.Q.value = 1;
+    fTreble = ctx.createBiquadFilter(); fTreble.type = 'highshelf'; fTreble.frequency.value = 3500;
+    analyser = ctx.createAnalyser(); analyser.fftSize = 128; analyser.smoothingTimeConstant = .82;
+    src.connect(fBass); fBass.connect(fMid); fMid.connect(fTreble); fTreble.connect(analyser); analyser.connect(gainNode = ctx.createGain()); gainNode.connect(ctx.destination); setVol(volLevel);
+    graphReady = true; applyEQ();
+  }
+  // Giá trị dB cho từng preset: [bass, mid, treble]
+  const PRESETS = { flat:[0,0,0], pop:[2,3,2], rock:[5,-2,4], bass:[9,0,-1], classic:[3,-1,3] };
+  function applyEQ(){
+    if (!graphReady) return;
+    const [b, m, t] = PRESETS[$('eq').value];
+    fBass.gain.value = b; fMid.gain.value = m; fTreble.gain.value = t;
+  }
+  $('eq').onchange = () => { applyEQ(); saveSettings(); };
+
+  /* Vẽ sóng âm bằng canvas */
+  const cv = $('viz'), g = cv.getContext('2d');
+  function fit(){ const r = devicePixelRatio || 1; cv.width = cv.clientWidth * r; cv.height = cv.clientHeight * r; }
+  addEventListener('resize', () => { fit(); startViz(); }); fit();
+  const data = new Uint8Array(64), N = 40, lv = new Float32Array(N);
+  let raf = 0;
+  function draw(){
+    raf = 0;
+    const w = cv.width, h = cv.height; g.clearRect(0, 0, w, h);
+    const live = graphReady && !audio.paused;
+    if (live) analyser.getByteFrequencyData(data);
+    let moving = live;
+    const bw = w / N, grad = g.createLinearGradient(0, h, 0, 0);
+    grad.addColorStop(0, '#ff6b9a'); grad.addColorStop(1, '#ffb454');
+    g.fillStyle = grad;
+    for (let i = 0; i < N; i++){
+      const bin = Math.min(63, Math.floor(Math.pow(i / N, 1.4) * 64));   // trải các cột lên cả dải cao, không chỉ dải trầm
+      const target = live ? data[bin] / 255 : 0;
+      lv[i] += (target - lv[i]) * (target > lv[i] ? .6 : .12);           // lên nhanh, hạ mượt
+      if (lv[i] > .004) moving = true;
+      const bh = Math.max(3, lv[i] * h);
+      g.beginPath();
+      if (g.roundRect) g.roundRect(i * bw + 2, h - bh, bw - 4, bh, 3); else g.rect(i * bw + 2, h - bh, bw - 4, bh);
+      g.fill();
+    }
+    if (moving) raf = requestAnimationFrame(draw);   // nhạc dừng và các cột hạ hết thì ngừng vẽ
+  }
+  function startViz(){ if (!raf) raf = requestAnimationFrame(draw); }
+  audio.addEventListener('play', startViz);
+  startViz();
+
+  /* ===== Hẹn giờ tắt nhạc ===== */
+  $('sleep').onchange = e => {
+    clearTimeout(sleepTimer); clearInterval(tick); $('timerLeft').textContent = '';
+    const min = +e.target.value; if (!min) return;
+    sleepEnd = Date.now() + min * 60000;
+    sleepTimer = setTimeout(() => { audio.pause(); $('sleep').value = '0'; $('timerLeft').textContent = ''; clearInterval(tick); }, min * 60000);
+    tick = setInterval(() => { const s = Math.max(0, Math.round((sleepEnd - Date.now()) / 1000)); $('timerLeft').textContent = fmt(s); }, 1000);
+  };
+
+  /* ===== Phím tắt: Space = phát/dừng, ←/→ = tua 5 giây ===== */
+  addEventListener('keydown', e => {
+    if (/^(INPUT|SELECT|BUTTON|LI)$/.test(e.target.tagName)) return;
+    if (e.code === 'Space'){ e.preventDefault(); togglePlay(); }
+    if (e.code === 'ArrowRight') audio.currentTime += 5;
+    if (e.code === 'ArrowLeft') audio.currentTime -= 5;
+  });
+
+  /* ======================================================================
+     LƯU TRỮ & SAO LƯU (học theo dự án kyniemnote)
+     Tầng 1: IndexedDB – lưu file nhạc + cài đặt, mở lại trang là còn nguyên
+     Tầng 2: Xuất / Nhập JSON – bản dự phòng khi mất dữ liệu hoặc đổi máy
+     Tầng 3: Liên kết file đĩa (File System Access API) – tự ghi danh sách vào .json
+     ====================================================================== */
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const MAX_TOTAL = 300 * 1048576, MAX_IMPORT = 400 * 1048576;   // tổng âm thanh nhúng tối đa / cỡ JSON nhập tối đa
+  const mb = n => (n / 1048576).toFixed(n >= 10485760 ? 0 : 1) + 'MB';
+  const MAX_EMBED = 15 * 1024 * 1024;   // file > 15MB chỉ lưu thông tin trong JSON, không nhúng âm thanh
+  let dbOk = false;
+  function notify(msg, label, fn){   // dòng trạng thái, có thể kèm nút hành động (vd: Hoàn tác)
+    const el = $('status'); el.textContent = msg + ' ';
+    if (label){ const b = document.createElement('button'); b.textContent = label; b.onclick = fn; el.appendChild(b); }
+  }
+  const setStatus = s => notify(s);
+  async function updateUsage(){
+    try { const e = await navigator.storage.estimate(); $('usage').textContent = 'Đã dùng ' + mb(e.usage) + ' / ' + mb(e.quota) + ' dung lượng của trình duyệt.'; } catch (e) {}
+  }
+  function askConfirm(msg, yes, no){   // hộp xác nhận trong trang
+    return new Promise(res => {
+      const m = $('modal'); $('mMsg').textContent = msg; $('mYes').textContent = yes || 'Đồng ý'; $('mNo').textContent = no || 'Hủy';
+      m.hidden = false; $('mYes').focus();
+      const done = v => { m.hidden = true; m.onkeydown = null; res(v); };
+      $('mYes').onclick = () => done(true); $('mNo').onclick = () => done(false);
+      m.onkeydown = e => { if (e.key === 'Escape') done(false); };
+    });
+  }
+  // Mọi thao tác DB đi qua đây để lỗi (hết dung lượng, chế độ riêng tư...) không làm hỏng trình phát
+  const safeDb = fn => dbOk ? fn().catch(e => setStatus(e && e.name === 'QuotaExceededError' ? '⚠️ Hết dung lượng lưu trữ của trình duyệt. Hãy xóa bớt bài (nhất là file mp4 lớn) hoặc dùng Xuất kho.' : '⚠️ Không lưu được vào trình duyệt: ' + ((e && e.message) || e))) : Promise.resolve();
+
+  /* ----- Tầng 1: IndexedDB (3 kho: meta = thông tin bài, blobs = file nhạc, kv = cài đặt & handle) ----- */
+  const DB = (() => {
+    let db;
+    const open = () => new Promise((res, rej) => {
+      const r = indexedDB.open('VinylRoomDB', 1);
+      r.onupgradeneeded = e => {
+        const d = e.target.result;
+        d.createObjectStore('meta', { keyPath: 'id' });
+        d.createObjectStore('blobs', { keyPath: 'id' });
+        d.createObjectStore('kv', { keyPath: 'key' });
+      };
+      r.onsuccess = e => { db = e.target.result; db.onversionchange = () => db.close(); res(); };
+      r.onerror = e => rej(e.target.error);
+    });
+    const run = (stores, mode, fn) => new Promise((res, rej) => {
+      const tx = db.transaction(stores, mode);
+      const out = fn(tx);
+      tx.oncomplete = () => res(out && out.result);
+      tx.onerror = tx.onabort = () => rej(tx.error);
+    });
+    const meta = t => ({ id: t.id, name: t.name, type: t.type || '', size: t.size || 0, dur: t.dur || 0, added: t.added });
+    return {
+      open,
+      all: () => new Promise((res, rej) => {
+        const tx = db.transaction(['meta', 'blobs'], 'readonly');
+        const m = tx.objectStore('meta').getAll(), b = tx.objectStore('blobs').getAll();
+        tx.oncomplete = () => res({ meta: m.result, blobs: b.result });
+        tx.onerror = () => rej(tx.error);
+      }),
+      putMeta: t => run(['meta'], 'readwrite', tx => tx.objectStore('meta').put(meta(t))),
+      putBlob: t => run(['blobs'], 'readwrite', tx => tx.objectStore('blobs').put({ id: t.id, blob: t.blob })),
+      del: id => run(['meta', 'blobs'], 'readwrite', tx => { tx.objectStore('meta').delete(id); tx.objectStore('blobs').delete(id); }),
+      replaceAll: list => run(['meta', 'blobs'], 'readwrite', tx => {   // dùng khi khôi phục từ JSON
+        tx.objectStore('meta').clear(); tx.objectStore('blobs').clear();
+        list.forEach(t => { tx.objectStore('meta').put(meta(t)); if (t.blob) tx.objectStore('blobs').put({ id: t.id, blob: t.blob }); });
+      }),
+      getKV: k => run(['kv'], 'readonly', tx => tx.objectStore('kv').get(k)).then(r => r && r.value),
+      setKV: (k, v) => run(['kv'], 'readwrite', tx => tx.objectStore('kv').put({ key: k, value: v }))
+    };
+  })();
+
+  /* ----- Cài đặt (loại đĩa, âm lượng, âm sắc, shuffle, repeat, bài đang chọn) ----- */
+  const currentSettings = () => ({ vinyl: vinylTheme, volume: volLevel, eq: $('eq').value, shuffle: shuffleOn, repeat: repeatMode, last: (idx >= 0 && tracks[idx]) ? tracks[idx].id : null });
+  const lightPayload = () => ({ app: 'vinyl-room', version: 1, mode: 'list', timestamp: Date.now(), settings: currentSettings(),
+    tracks: tracks.map(t => ({ id: t.id, name: t.name, type: t.type || '', size: t.size || 0, dur: t.dur || 0, added: t.added })) });
+  let sTimer;
+  function saveSettings(){ clearTimeout(sTimer); sTimer = setTimeout(() => { safeDb(() => DB.setKV('settings', currentSettings())); Disk.saveSoon(); }, 400); }
+  function persistSoon(){ Disk.saveSoon(); }
+  function applySettings(s){
+    if (!s) return;
+    applyVinyl(s.vinyl || 'classic');
+    if (typeof s.volume === 'number'){ setVol(s.volume); audio.muted = false; updateMute(); }
+    if (PRESETS[s.eq]){ $('eq').value = s.eq; applyEQ(); }
+    shuffleOn = !!s.shuffle; btn.shuffle.classList.toggle('on', shuffleOn);
+    setRepeat(s.repeat | 0);
+  }
+  function probeDuration(t){   // đọc thời lượng bằng thẻ audio tạm (mp4 cũng chỉ đọc phần âm thanh)
+    if (!t.url) return;
+    const p = new Audio(); p.preload = 'metadata'; p.src = t.url;
+    p.onloadedmetadata = () => { t.dur = p.duration; renderList(); safeDb(() => DB.putMeta(t)); persistSoon(); };
+  }
+
+  /* ----- Tầng 2: Xuất / Nhập JSON ----- */
+  const toDataURL = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(b); });
+  const dataToBlob = u => {   // đổi data URL về Blob (không dùng fetch để tránh bị chặn mạng)
+    const [h, b] = u.split(','); const mime = (h.match(/:(.*?);/) || [])[1] || 'audio/mpeg';
+    const bin = atob(b), a = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+    return new Blob([a], { type: mime });
+  };
+  async function saveFile(filename, text){
+    // Trên trang đã publish phải xin quyền "downloads"; chạy file HTML cục bộ thì tải trực tiếp
+    try {
+      const dl = (window.claude && window.claude.use) ? await window.claude.use('downloads') : null;
+      if (dl){ await dl.save({ filename, data: text }); return true; }
+    } catch (e){ if (e && e.code === 'declined') return false; }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(text instanceof Blob ? text : new Blob([text], { type: 'application/json' })); a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    return true;
+  }
+  async function exportBackup(full){
+    try {
+      const payload = lightPayload();
+      if (full) payload.mode = 'full';
+      const { tracks: list, ...head } = payload;
+      // Ghép JSON thành nhiều Blob nhỏ thay vì một chuỗi khổng lồ, nên thư viện lớn vẫn xuất được
+      const parts = [JSON.stringify(head).slice(0, -1) + ',"tracks":['];
+      let skipped = 0, total = 0;
+      for (let i = 0; i < list.length; i++){
+        const t = tracks[i];
+        if (full && t.blob){
+          if (t.blob.size <= MAX_EMBED && total + t.blob.size <= MAX_TOTAL){ list[i].data = await toDataURL(t.blob); total += t.blob.size; }
+          else skipped++;
+        }
+        parts.push(new Blob([(i ? ',' : '') + JSON.stringify(list[i])]));
+      }
+      parts.push(']}');
+      const name = 'vinyl_room_' + (full ? 'full' : 'list') + '_' + new Date().toISOString().slice(0, 10) + '.json';
+      const ok = await saveFile(name, new Blob(parts, { type: 'application/json' }));
+      setStatus(ok ? '✅ Đã xuất ' + tracks.length + ' bài' + (skipped ? '. ' + skipped + ' file chưa nhúng âm thanh (quá 15MB hoặc vượt tổng 300MB), chỉ lưu tên: khi khôi phục hãy thêm lại file cùng tên.' : '.') : 'Đã hủy lưu file.');
+    } catch (err){ setStatus('❌ Lỗi xuất backup: ' + err.message); }
+  }
+  async function restoreData(data){
+    if (!data || data.app !== 'vinyl-room' || !Array.isArray(data.tracks)) throw new Error('File JSON không đúng định dạng Vinyl Room!');
+    // Giữ lại file âm thanh đang có (theo id hoặc tên + dung lượng) cho các bài không nhúng dữ liệu
+    const byId = new Map(tracks.map(t => [t.id, t]));
+    const byKey = new Map(tracks.filter(t => t.blob).map(t => [t.name.toLowerCase() + '|' + t.size, t]));
+    const next = [];
+    for (const r of data.tracks){
+      const t = { id: r.id || uid(), name: r.name || 'Không tên', type: r.type || '', size: r.size || 0, dur: r.dur || 0, added: r.added || Date.now(), missing: false };
+      if (r.data) { try { t.blob = dataToBlob(r.data); } catch (e) { t.blob = null; } }
+      if (!t.blob){ const o = byId.get(t.id) || byKey.get(t.name.toLowerCase() + '|' + t.size); if (o && o.blob) t.blob = o.blob; }
+      if (t.blob) t.url = URL.createObjectURL(t.blob); else t.missing = true;
+      next.push(t);
+    }
+    audio.pause(); audio.removeAttribute('src');
+    tracks.forEach(t => { if (t.url) URL.revokeObjectURL(t.url); });
+    tracks = next.sort((a, b) => a.added - b.added); idx = -1;
+    await safeDb(() => DB.replaceAll(tracks));
+    applySettings(data.settings);
+    renderList();
+    if (tracks.length){
+      let i = tracks.findIndex(t => data.settings && t.id === data.settings.last); if (i < 0) i = tracks.findIndex(t => !t.missing);
+      loadTrack(i < 0 ? 0 : i, false);
+    } else resetUI();
+    saveSettings();
+    return { total: tracks.length, missing: tracks.filter(t => t.missing).length };
+  }
+  $('bkFull').onclick = () => exportBackup(true);
+  $('bkLight').onclick = () => exportBackup(false);
+  $('bkImport').onclick = () => $('jsonFile').click();
+  $('jsonFile').onchange = async e => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    if (f.size > MAX_IMPORT){ setStatus('❌ File JSON ' + mb(f.size) + ' quá lớn để nhập một lần (tối đa khoảng 400MB). Hãy xuất lại bằng "Xuất danh sách" rồi thêm file nhạc trực tiếp.'); return; }
+    if (tracks.length && !(await askConfirm('Nhập kho sẽ thay danh sách hiện tại bằng nội dung file JSON. Tiếp tục?', 'Nhập và thay thế'))) return;
+    try {
+      const r = await restoreData(JSON.parse(await f.text()));
+      setStatus('✅ Đã khôi phục ' + r.total + ' bài' + (r.missing ? ', ' + r.missing + ' bài thiếu file (thêm lại file cùng tên để gắn vào).' : '.'));
+      updateUsage();
+    } catch (err){ setStatus('❌ Lỗi nhập backup: ' + err.message); }
+  };
+
+  /* ----- Tầng 3: Liên kết file đĩa – tự ghi danh sách (nhẹ) vào file .json mỗi khi có thay đổi ----- */
+  const Disk = (() => {
+    let handle = null, timer = null;
+    const supported = !!window.showSaveFilePicker;
+    async function granted(h, ask){
+      const o = { mode: 'readwrite' };
+      if (await h.queryPermission(o) === 'granted') return true;
+      return ask ? (await h.requestPermission(o)) === 'granted' : false;
+    }
+    async function write(){
+      try {
+        if (!handle || !(await granted(handle, false))) return;
+        const w = await handle.createWritable();
+        await w.write(JSON.stringify(lightPayload(), null, 2)); await w.close();
+        if (!pending) setStatus('✅ Đã tự lưu vào ' + handle.name + ' (' + new Date().toLocaleTimeString('vi-VN') + ')');
+      } catch (e){ setStatus('❌ Lỗi ghi file đĩa: ' + e.message); }
+    }
+    function saveSoon(){ clearTimeout(timer); if (handle) timer = setTimeout(write, 600); }
+    async function link(){
+      if (!supported){ setStatus('⚠️ Trình duyệt hoặc khung hiển thị này không hỗ trợ liên kết file đĩa (cần Chrome/Edge và mở file HTML trực tiếp). Hãy dùng Xuất kho.'); return; }
+      try {
+        // Đã có liên kết nhưng mất quyền ghi (sau khi mở lại trình duyệt): chỉ cần cấp lại quyền
+        if (handle && !(await granted(handle, false)) && await granted(handle, true)){ await write(); return; }
+        const h = await window.showSaveFilePicker({ suggestedName: 'vinyl-room-data.json', types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }] });
+        const text = await (await h.getFile()).text();
+        handle = h; await safeDb(() => DB.setKV('handle', h));
+        if (text.trim()){
+          const data = JSON.parse(text);
+          if (!tracks.length || await askConfirm('File "' + h.name + '" đã có dữ liệu.\n\nNạp danh sách từ file (thay danh sách hiện tại) hay ghi đè file bằng danh sách hiện tại?', 'Nạp từ file', 'Ghi đè file')){
+            const r = await restoreData(data);
+            setStatus('✅ Đã nạp ' + r.total + ' bài từ ' + h.name + (r.missing ? ', ' + r.missing + ' bài cần thêm lại file.' : '.')); return;
+          }
+        }
+        await write();
+      } catch (e){ if (e.name !== 'AbortError') setStatus('❌ Không liên kết được file: ' + e.message); }
+    }
+    async function boot(){   // chạy lúc mở trang: nếu trình duyệt đã mất danh sách thì nạp lại từ file đĩa
+      if (!dbOk) return;
+      try { handle = await DB.getKV('handle'); } catch (e) { handle = null; }
+      if (!handle){ setStatus(tracks.length ? '💾 Nhạc đã lưu trong trình duyệt. Bấm "Xuất kho" để có thêm bản dự phòng.' : 'Chưa có bài nào. Thêm nhạc hoặc nhập file JSON.'); return; }
+      try {
+        if (await granted(handle, false)){
+          if (!tracks.length){
+            const t = await (await handle.getFile()).text();
+            if (t.trim()){ const r = await restoreData(JSON.parse(t)); setStatus('✅ Khôi phục ' + r.total + ' bài từ ' + handle.name + (r.missing ? ', ' + r.missing + ' bài cần thêm lại file.' : '.')); return; }
+          }
+          setStatus('✅ Đã liên kết file đĩa: ' + handle.name);
+        } else setStatus('⚠️ Bấm "Liên kết file đĩa" để cấp lại quyền ghi cho ' + handle.name);
+      } catch (e){ setStatus('⚠️ File liên kết đã bị đổi tên hoặc di chuyển.'); }
+    }
+    return { link, saveSoon, boot };
+  })();
+  $('bkDisk').onclick = Disk.link;
+
+  /* ----- Khởi động: nạp lại playlist + cài đặt đã lưu ----- */
+  async function init(){
+    renderList();
+    try {   // giới hạn 5 giây: nếu kho đang bị tab khác giữ thì báo lỗi thay vì treo
+      await Promise.race([DB.open(), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000))]); dbOk = true;
+    } catch (e) { setStatus('⚠️ Trình duyệt không cho lưu dữ liệu. Hãy dùng Xuất kho để sao lưu.'); }
+    if (dbOk){
+      try {
+        if (navigator.storage && navigator.storage.persist) navigator.storage.persist();   // xin trình duyệt đừng tự xóa dữ liệu
+        const { meta, blobs } = await DB.all();
+        const bm = new Map(blobs.map(b => [b.id, b.blob]));
+        tracks = meta.sort((a, b) => a.added - b.added).map(m => {
+          const b = bm.get(m.id);
+          return Object.assign({}, m, b ? { blob: b, url: URL.createObjectURL(b), missing: false } : { missing: true });
+        });
+        const s = await DB.getKV('settings'); applySettings(s);
+        renderList();
+        if (tracks.length){
+          let i = tracks.findIndex(t => s && t.id === s.last); if (i < 0) i = tracks.findIndex(t => !t.missing);
+          loadTrack(i < 0 ? 0 : i, false);
+        }
+      } catch (e) { setStatus('⚠️ Không đọc được dữ liệu đã lưu: ' + e.message); }
+    }
+    await Disk.boot();
+  }
+  init().finally(() => { initResolve(); updateUsage(); });
+
+})();
+</script>
+</body>
+</html>

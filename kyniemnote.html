@@ -483,6 +483,22 @@
         box-shadow: 0 12px 24px rgba(0, 191, 255, 0.2);
       }
 
+      /* CSS BỔ SUNG CHO CHẾ ĐỘ CHỌN HÀNG LOẠT */
+      .media-item.selected {
+        border: 2px solid var(--accent) !important;
+        box-shadow: 0 0 14px rgba(0, 191, 255, 0.6) !important;
+      }
+      .media-checkbox {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 20px;
+        height: 20px;
+        accent-color: var(--accent);
+        cursor: pointer;
+        z-index: 15;
+      }
+
       .media-thumb {
         width: 100%;
         flex-grow: 1;
@@ -684,6 +700,11 @@
         margin-left: 12px;
         color: var(--text-main);
       }
+      .btn-replace {
+        background: rgba(0, 191, 255, 0.2) !important;
+        border-color: var(--accent) !important;
+        color: var(--accent) !important;
+      }
       .btn-delete {
         background: rgba(255, 71, 87, 0.2) !important;
         border-color: var(--danger) !important;
@@ -735,7 +756,7 @@
         <input type="text" id="global-search-input" class="global-search-input" placeholder="🔍 Tìm kiếm toàn cục xuyên thư mục..." />
       </div>
       <ul id="folder-list"></ul>
-      <!-- TẦNG 1 & TẦNG 3: SAO LƯU + NATIVE FILE SYSTEM ENGINE (LƯU THẺ FILEHANDLE VÀO INDEXEDDB) -->
+      <!-- TẦNG 1 & TẦNG 3: SAO LƯU + NATIVE FILE SYSTEM ENGINE -->
       <div class="backup-actions">
         <button class="btn-backup" id="btn-export-backup" title="Xuất toàn bộ database ra file JSON thủ công">💾 Xuất kho</button>
         <button class="btn-backup" id="btn-import-backup" title="Nhập và khôi phục database từ file JSON thủ công">📂 Nhập kho</button>
@@ -750,7 +771,7 @@
       <div class="content-header">
         <div class="header-info-group">
           <span id="current-folder-title" title="Nhấn đúp chuột để đổi tên">Chào mừng! Hãy chọn hoặc tạo thư mục.</span>
-          <!-- TẦNG 3: HỆ THỐNG THẺ (PARALLEL LAYERS & CROSS-CONNECTIONS) -->
+          <!-- TẦNG 3: HỆ THỐNG THẺ -->
           <div class="tag-system-bar" id="tag-system-bar" style="display: none;">
             <div id="active-tags-container" style="display: inline-flex; gap: 4px; flex-wrap: wrap;"></div>
             <input type="text" id="new-tag-input" class="tag-input" placeholder="+ Thêm thẻ..." />
@@ -772,7 +793,22 @@
           <div class="drop-zone" id="drop-zone">
             <span id="drop-zone-text">📁 Nhấp vào đây hoặc kéo thả file <span id="media-type-label"></span> vào đây</span>
           </div>
+
+          <!-- TÌM KIẾM FILE NỘI BỘ VÀ NÚT KÍCH HOẠT CHỌN HÀNG LOẠT -->
+          <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap;">
+            <input type="text" id="folder-file-search-input" class="global-search-input" placeholder="🔍 Tìm kiếm file trong thư mục này..." style="flex: 1; min-width: 200px;" />
+            <button class="btn-backup" id="btn-toggle-select-mode" style="padding: 8px 14px; background: rgba(0, 191, 255, 0.15); border-color: var(--accent);">☑️ Chọn nhiều</button>
+          </div>
+
+          <!-- THANH HÀNH ĐỘNG XÓA HÀNG LOẠT -->
+          <div id="batch-actions-group" style="display: none; gap: 8px; margin-bottom: 16px; align-items: center; background: rgba(0, 0, 0, 0.2); padding: 8px 12px; border-radius: var(--radius); border: 1px solid rgba(255, 255, 255, 0.08);">
+            <button class="btn-backup" id="btn-select-all" style="font-size: 11px;">✓ Chọn trang này</button>
+            <button class="btn-backup" id="btn-deselect-all" style="font-size: 11px;">✕ Bỏ chọn</button>
+            <button class="btn-backup btn-delete" id="btn-delete-selected" disabled style="background: rgba(255, 71, 87, 0.2) !important; border-color: var(--danger) !important; color: var(--danger) !important; font-weight: 600;">🗑️ Xóa (0) file đã chọn</button>
+          </div>
+
           <input type="file" id="hidden-file-input" multiple style="display: none" />
+          <input type="file" id="hidden-replace-file-input" style="display: none" />
           <div class="media-grid" id="media-grid"></div>
           <div class="pagination-bar" id="pagination-bar" style="display: none;">
             <button class="btn-page" id="btn-prev-page">◀ Trước</button>
@@ -809,6 +845,7 @@
       <div class="viewer-header">
         <div id="viewer-title">Tên file</div>
         <div class="viewer-actions">
+          <button class="btn-replace" id="btn-viewer-replace" title="Thay thế file này bằng một file mới">🔄 Thay Thế File</button>
           <button class="btn-delete" id="btn-viewer-delete">🗑️ Xóa File</button>
           <button class="btn-close" id="btn-viewer-close">✕ Đóng (Esc)</button>
         </div>
@@ -884,7 +921,8 @@
           };
 
           video.onloadedmetadata = () => {
-            video.currentTime = Math.min(seekTo, video.duration || seekTo);
+            const validDuration = (isFinite(video.duration) && video.duration > 0) ? video.duration : seekTo;
+            video.currentTime = Math.min(seekTo, validDuration);
           };
 
           video.onseeked = () => {
@@ -1087,19 +1125,16 @@
         return { get, save, autoSave };
       })();
 
-      /* TẦNG MEDIA MANAGER (TÍCH HỢP TẦNG 4: THUMBNAIL & COMPRESSION) */
+      /* TẦNG MEDIA MANAGER (TÍCH HỢP XÓA MẢNG BATCH DELETE) */
       const MediaManager = (() => {
         const add = async (folderId, file) => {
           let processedBlob = file;
           let thumbnailBlob = null;
 
           if (file.type.startsWith("image/")) {
-            // Nén ảnh chất lượng WebP 80% trước khi lưu
             processedBlob = await compressImage(file, 1920, 1080, 0.8);
-            // Tạo thumbnail siêu nhẹ dành cho Grid
             thumbnailBlob = await compressImage(file, 300, 300, 0.7);
           } else if (file.type.startsWith("video/")) {
-            // Video giữ Blob gốc, tạo thumbnail frame t=1.0s qua Canvas (< 50KB)
             processedBlob = file;
             thumbnailBlob = await generateVideoThumbnail(file, 1.0);
           }
@@ -1117,7 +1152,54 @@
               DiskFileSystemManager.saveToDisk();
               resolve(e.target.result);
             };
-            req.onerror = (e) => reject(e);
+            req.onerror = (e) => reject(e.target.error || e);
+          });
+        };
+
+        const replace = async (fileId, folderId, newFile) => {
+          let processedBlob = newFile;
+          let thumbnailBlob = null;
+
+          if (newFile.type.startsWith("image/")) {
+            processedBlob = await compressImage(newFile, 1920, 1080, 0.8);
+            thumbnailBlob = await compressImage(newFile, 300, 300, 0.7);
+          } else if (newFile.type.startsWith("video/")) {
+            processedBlob = newFile;
+            thumbnailBlob = await generateVideoThumbnail(newFile, 1.0);
+          }
+
+          return new Promise((resolve, reject) => {
+            const req = DatabaseManager.query("files", "readwrite").put({
+              id: fileId,
+              folderId,
+              name: newFile.name,
+              type: newFile.type,
+              blob: processedBlob,
+              thumbnailBlob: thumbnailBlob,
+              timestamp: Date.now()
+            });
+            req.onsuccess = () => {
+              DiskFileSystemManager.saveToDisk();
+              resolve(fileId);
+            };
+            req.onerror = (e) => reject(e.target.error || e);
+          });
+        };
+
+        const updateThumbnail = async (fileId, thumbnailBlob) => {
+          return new Promise((resolve, reject) => {
+            const store = DatabaseManager.query("files", "readwrite");
+            const getReq = store.get(fileId);
+            getReq.onsuccess = () => {
+              const data = getReq.result;
+              if (data) {
+                data.thumbnailBlob = thumbnailBlob;
+                store.put(data).onsuccess = () => resolve();
+              } else {
+                resolve();
+              }
+            };
+            getReq.onerror = (e) => reject(e);
           });
         };
 
@@ -1169,7 +1251,29 @@
           });
         };
 
-        return { add, getByFolder, getMetadataByFolder, getById, delete: delete_ };
+        /* TÍNH NĂNG XÓA THEO MẢNG TRONG 1 TRANSACTION */
+        const deleteBatch = async (fileIds) => {
+          if (!fileIds || fileIds.length === 0) return;
+          return new Promise((resolve, reject) => {
+            DiskFileSystemManager.setPauseAutoSave(true);
+            const tx = DatabaseManager.transaction(["files"], "readwrite");
+            const store = tx.objectStore("files");
+
+            fileIds.forEach((id) => store.delete(id));
+
+            tx.oncomplete = () => {
+              DiskFileSystemManager.setPauseAutoSave(false);
+              DiskFileSystemManager.saveToDisk(true);
+              resolve();
+            };
+            tx.onerror = (e) => {
+              DiskFileSystemManager.setPauseAutoSave(false);
+              reject(e.target.error || e);
+            };
+          });
+        };
+
+        return { add, replace, updateThumbnail, getByFolder, getMetadataByFolder, getById, delete: delete_, deleteBatch };
       })();
 
       /* TẦNG 1: BACKUP & RESTORE MANAGER */
@@ -1192,6 +1296,7 @@
           const folders = await FolderManager.getAll();
           const texts = [];
           const files = [];
+          let skippedCount = 0;
 
           for (const f of folders) {
             const textContent = await TextManager.get(f.id);
@@ -1201,6 +1306,8 @@
               let base64 = null;
               if (fileRec.blob && fileRec.blob.size <= MAX_BASE64_SIZE) {
                 base64 = await blobToBase64(fileRec.blob);
+              } else {
+                skippedCount++;
               }
               files.push({
                 id: fileRec.id,
@@ -1212,37 +1319,44 @@
               });
             }
           }
-          return { version: 1, timestamp: Date.now(), folders, texts, files };
+          return {
+            payload: { version: 1, timestamp: Date.now(), folders, texts, files },
+            skippedCount
+          };
         };
 
         const restoreData = async (data) => {
           if (!data.folders || !data.files) throw new Error("File backup không hợp lệ!");
 
           const existingFilesMap = new Map();
-          const allExistingFiles = await new Promise((res, rej) => {
-            const req = DatabaseManager.query("files", "readonly").getAll();
-            req.onsuccess = (e) => res(e.target.result || []);
-            req.onerror = (e) => rej(e.target.error);
-          });
-          allExistingFiles.forEach(f => existingFilesMap.set(f.id, f.blob));
+          try {
+            const allExistingFiles = await new Promise((res, rej) => {
+              const req = DatabaseManager.query("files", "readonly").getAll();
+              req.onsuccess = (e) => res(e.target.result || []);
+              req.onerror = (e) => rej(e.target.error);
+            });
+            allExistingFiles.forEach(f => existingFilesMap.set(f.id, f.blob));
+          } catch (e) {
+            console.warn("Không thể đọc danh sách file cũ:", e);
+          }
 
           const preparedFiles = [];
           for (const f of data.files) {
             let blob = null;
             if (f.data) {
-              blob = await fetch(f.data).then(res => res.blob());
+              blob = await fetch(f.data).then(res => res.blob()).catch(() => null);
             } else if (f.id && existingFilesMap.has(f.id)) {
               blob = existingFilesMap.get(f.id);
-            } else {
-              blob = new Blob(["File kích thước lớn không được sao lưu trong JSON"], {type: f.type});
+            }
+            
+            if (!blob) {
+              blob = new Blob(["File kích thước lớn không được sao lưu trong JSON"], {type: f.type || "application/octet-stream"});
             }
 
-            if (blob) {
-              preparedFiles.push({
-                id: f.id,
-                folderId: f.folderId, name: f.name, type: f.type, blob: blob, timestamp: f.timestamp
-              });
-            }
+            preparedFiles.push({
+              id: f.id,
+              folderId: f.folderId, name: f.name, type: f.type, blob: blob, timestamp: f.timestamp
+            });
           }
 
           const tx = DatabaseManager.transaction(["folders", "texts", "files"], "readwrite");
@@ -1271,8 +1385,11 @@
 
         const exportBackup = async () => {
           try {
-            const backupData = await generateFullBackupPayload();
-            const blob = new Blob([JSON.stringify(backupData)], { type: "application/json" });
+            const { payload, skippedCount } = await generateFullBackupPayload();
+            if (skippedCount > 0) {
+              alert(`⚠️ Phát hiện ${skippedCount} file media lớn hơn 15MB.\n\nCác file này chỉ được lưu thông tin chỉ mục trong file JSON sao lưu để tránh làm treo trình duyệt. Để chuyển file lớn sang máy khác, hãy sao chép thủ công file gốc.`);
+            }
+            const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
@@ -1311,6 +1428,11 @@
       const DiskFileSystemManager = (() => {
         let saveTimeout = null;
         let cachedHandle = null;
+        let isAutoSavePaused = false;
+
+        const setPauseAutoSave = (pause) => {
+          isAutoSavePaused = pause;
+        };
 
         const updateStatusUI = (text) => {
           const el = document.getElementById("disk-status");
@@ -1363,21 +1485,21 @@
           try {
             cachedHandle = await DatabaseManager.getFileHandle();
             if (!cachedHandle) {
-              updateStatusUI(`📁 Bấm chọn file .json để liên kết`);
+              updateStatusUI(`📁 Bấm "Liên Kết File Đĩa" để chọn file .json`);
               return;
             }
 
-            const hasPermission = await verifyPermission(cachedHandle, false);
-            if (hasPermission) {
+            const perm = await cachedHandle.queryPermission({ mode: "readwrite" });
+            if (perm === "granted") {
               const file = await cachedHandle.getFile();
               const text = await file.text();
               if (text.trim()) {
                 const data = JSON.parse(text);
                 await BackupManager.restoreData(data);
-                updateStatusUI(`✅ Đã nạp từ file: ${cachedHandle.name}`);
+                updateStatusUI(`✅ Liên kết đĩa: ${cachedHandle.name}`);
               }
             } else {
-              updateStatusUI(`⚠️ Cần bấm vào nút liên kết để cấp quyền lại`);
+              updateStatusUI(`⚠️ Nhấp nút "Liên Kết File Đĩa" để cấp lại quyền đọc/ghi`);
             }
           } catch (err) {
             console.error("Lỗi tự động nạp file từ thẻ IndexedDB:", err);
@@ -1386,6 +1508,7 @@
         };
 
         const saveToDisk = (immediate = false) => {
+          if (isAutoSavePaused) return;
           clearTimeout(saveTimeout);
 
           const executeSave = async () => {
@@ -1418,7 +1541,7 @@
           }
         };
 
-        return { selectDiskFile, autoLoadFromDisk, saveToDisk };
+        return { selectDiskFile, autoLoadFromDisk, saveToDisk, setPauseAutoSave };
       })();
 
       /* TẦNG 2: GLOBAL SEARCH MANAGER */
@@ -1458,12 +1581,20 @@
           currentPage: 1,
           itemsPerPage: 40,
           cachedFiles: [],
-          isSearching: false
+          isSearching: false,
+          folderSearchQuery: "",
+          isSelectMode: false,
+          selectedFileIds: new Set()
         };
 
         let currentViewerBlobUrl = null;
+        const activeBlobUrls = new Set();
 
-        /* [TẦNG 4]: TỐI ƯU LAZY-LOAD NẠP THUMBNAIL SIÊU NHẸ CHO GRID */
+        const clearMediaGridMemory = () => {
+          activeBlobUrls.forEach((url) => URL.revokeObjectURL(url));
+          activeBlobUrls.clear();
+        };
+
         let mediaObserver = new IntersectionObserver(async (entries, observer) => {
           for (const entry of entries) {
             const el = entry.target;
@@ -1474,10 +1605,22 @@
                 try {
                   const fileRec = await MediaManager.getById(fileId);
                   if (fileRec) {
-                    // Ưu tiên sử dụng thumbnailBlob siêu nhẹ; nếu dữ liệu cũ chưa có thì mới dùng blob gốc
-                    const displayBlob = fileRec.thumbnailBlob || fileRec.blob;
+                    let displayBlob = fileRec.thumbnailBlob;
+                    
+                    if (!displayBlob) {
+                      if (fileRec.type.startsWith("image/")) {
+                        displayBlob = fileRec.blob;
+                      } else if (fileRec.type.startsWith("video/")) {
+                        displayBlob = await generateVideoThumbnail(fileRec.blob, 1.0);
+                        if (displayBlob) {
+                          await MediaManager.updateThumbnail(fileId, displayBlob);
+                        }
+                      }
+                    }
+
                     if (displayBlob) {
                       const blobUrl = URL.createObjectURL(displayBlob);
+                      activeBlobUrls.add(blobUrl);
                       el.dataset.blobUrl = blobUrl;
                       el.src = blobUrl;
                     }
@@ -1489,6 +1632,7 @@
             } else {
               if (el.dataset.blobUrl) {
                 URL.revokeObjectURL(el.dataset.blobUrl);
+                activeBlobUrls.delete(el.dataset.blobUrl);
                 delete el.dataset.blobUrl;
                 el.removeAttribute('src');
               }
@@ -1506,6 +1650,8 @@
           statusEl: document.getElementById("save-status"),
           dropZone: document.getElementById("drop-zone"),
           hiddenFileInput: document.getElementById("hidden-file-input"),
+          hiddenReplaceFileInput: document.getElementById("hidden-replace-file-input"),
+          folderFileSearchInput: document.getElementById("folder-file-search-input"),
           createModal: document.getElementById("create-modal"),
           newFolderNameInput: document.getElementById("new-folder-name-input"),
           mediaViewer: document.getElementById("media-viewer"),
@@ -1522,6 +1668,11 @@
           tagSystemBar: document.getElementById("tag-system-bar"),
           activeTagsContainer: document.getElementById("active-tags-container"),
           newTagInput: document.getElementById("new-tag-input"),
+          btnToggleSelectMode: document.getElementById("btn-toggle-select-mode"),
+          batchActionsGroup: document.getElementById("batch-actions-group"),
+          btnSelectAll: document.getElementById("btn-select-all"),
+          btnDeselectAll: document.getElementById("btn-deselect-all"),
+          btnDeleteSelected: document.getElementById("btn-delete-selected")
         };
 
         const renderFolderList = async () => {
@@ -1633,7 +1784,13 @@
         };
 
         const selectFolder = async (id, type, name) => {
+          clearMediaGridMemory();
           state.isSearching = false;
+          state.folderSearchQuery = "";
+          state.isSelectMode = false;
+          state.selectedFileIds.clear();
+          
+          elements.folderFileSearchInput.value = "";
           elements.globalSearchInput.value = "";
           state.activeFolderId = id;
           state.activeFolderType = type;
@@ -1653,6 +1810,7 @@
           elements.searchWorkspace.style.display = "none";
 
           await renderActiveFolderTags(id);
+          updateBatchUI();
 
           if (type === "text") {
             elements.textEditor.style.display = "block";
@@ -1666,7 +1824,11 @@
             elements.textEditor.style.display = "none";
             elements.mediaWorkspace.style.display = "flex";
             elements.mediaTypeLabel.textContent = type === "image" ? "Hình ảnh" : "Video";
-            elements.hiddenFileInput.accept = type === "image" ? "image/*" : "video/*";
+            
+            const acceptType = type === "image" ? "image/*" : "video/*";
+            elements.hiddenFileInput.accept = acceptType;
+            elements.hiddenReplaceFileInput.accept = acceptType;
+
             loadMediaContent(id);
           }
         };
@@ -1696,14 +1858,42 @@
           renderPagedMedia();
         };
 
-        /* [TẦNG 4]: RENDER GRID DÙNG <img> THUMBNAIL CHO CẢ ẢNH VÀ VIDEO (ZERO-RAM & FAST RENDER) */
+        const updateBatchUI = () => {
+          if (state.isSelectMode) {
+            elements.batchActionsGroup.style.display = "flex";
+            elements.btnToggleSelectMode.style.background = "var(--accent)";
+            elements.btnToggleSelectMode.style.color = "#fff";
+            elements.btnToggleSelectMode.textContent = "✕ Thoát chọn nhiều";
+
+            const selectedCount = state.selectedFileIds.size;
+            elements.btnDeleteSelected.textContent = `🗑️ Xóa (${selectedCount}) file đã chọn`;
+            elements.btnDeleteSelected.disabled = selectedCount === 0;
+          } else {
+            elements.batchActionsGroup.style.display = "none";
+            elements.btnToggleSelectMode.style.background = "rgba(0, 191, 255, 0.15)";
+            elements.btnToggleSelectMode.style.color = "var(--text-main)";
+            elements.btnToggleSelectMode.textContent = "☑️ Chọn nhiều";
+          }
+        };
+
         const renderPagedMedia = () => {
+          clearMediaGridMemory();
           elements.mediaGrid.innerHTML = "";
-          const totalFiles = state.cachedFiles.length;
+          
+          let displayFiles = state.cachedFiles;
+          if (state.folderSearchQuery.trim()) {
+            const query = state.folderSearchQuery.toLowerCase();
+            displayFiles = state.cachedFiles.filter(f => f.name.toLowerCase().includes(query));
+          }
+
+          const totalFiles = displayFiles.length;
           updateHeaderStats("media", totalFiles);
 
           if (totalFiles === 0) {
             elements.paginationBar.style.display = "none";
+            if (state.folderSearchQuery.trim()) {
+              elements.mediaGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 30px;">Không tìm thấy file nào khớp với từ khóa "${escapeHTML(state.folderSearchQuery)}".</div>`;
+            }
             return;
           }
 
@@ -1712,14 +1902,14 @@
 
           const start = (state.currentPage - 1) * state.itemsPerPage;
           const end = start + state.itemsPerPage;
-          const pageItems = state.cachedFiles.slice(start, end);
+          const pageItems = displayFiles.slice(start, end);
 
           const fragment = document.createDocumentFragment();
           pageItems.forEach((fileRec) => {
             const div = document.createElement("div");
-            div.className = "media-item";
+            const isSelected = state.selectedFileIds.has(fileRec.id);
+            div.className = `media-item ${isSelected ? "selected" : ""}`;
 
-            // Cả Video và Ảnh đều dùng thẻ <img> để nạp Thumbnail nhẹ
             let thumbHTML = `<img data-file-id="${fileRec.id}" class="media-thumb lazy-media" alt="${escapeHTML(fileRec.name)}">`;
 
             if (fileRec.type.startsWith("video/")) {
@@ -1727,8 +1917,26 @@
               div.setAttribute("data-video-name", fileRec.name);
             }
 
-            div.innerHTML = `${thumbHTML}<div class="media-title">${escapeHTML(fileRec.name)}</div>`;
-            div.onclick = () => openMediaViewer(fileRec);
+            let checkboxHTML = "";
+            if (state.isSelectMode) {
+              checkboxHTML = `<input type="checkbox" class="media-checkbox" ${isSelected ? "checked" : ""}>`;
+            }
+
+            div.innerHTML = `${checkboxHTML}${thumbHTML}<div class="media-title">${escapeHTML(fileRec.name)}</div>`;
+            
+            div.onclick = (e) => {
+              if (state.isSelectMode) {
+                if (state.selectedFileIds.has(fileRec.id)) {
+                  state.selectedFileIds.delete(fileRec.id);
+                } else {
+                  state.selectedFileIds.add(fileRec.id);
+                }
+                updateBatchUI();
+                renderPagedMedia();
+              } else {
+                openMediaViewer(fileRec);
+              }
+            };
 
             const mediaEl = div.querySelector('.lazy-media');
             if (mediaEl) mediaObserver.observe(mediaEl);
@@ -1814,8 +2022,13 @@
         };
 
         const resetWorkspace = () => {
+          clearMediaGridMemory();
           state.activeFolderId = null;
           state.isSearching = false;
+          state.folderSearchQuery = "";
+          state.isSelectMode = false;
+          state.selectedFileIds.clear();
+
           localStorage.clear();
           elements.titleEl.textContent = "Chào mừng! Hãy chọn hoặc tạo thư mục.";
           elements.textEditor.style.display = "none";
@@ -1902,14 +2115,14 @@
         return {
           renderFolderList, selectFolder, loadMediaContent, renderPagedMedia,
           openMediaViewer, closeMediaViewer, deleteFolderConfirm, resetWorkspace,
-          handleGlobalSearch, renderActiveFolderTags, startInlineRenameTitle,
+          handleGlobalSearch, renderActiveFolderTags, startInlineRenameTitle, updateBatchUI,
           getState: () => state, elements
         };
       })();
 
       // Event Handlers & Init
       window.addEventListener("DOMContentLoaded", async () => {
-        if (navigator.storage && navigator.storage.persist) {
+        if (navigator.storage && navigator.storagepersist) {
           navigator.storage.persist().then((granted) => {
             if (granted) console.log("✅ Dung lượng IndexedDB đã được khóa bảo vệ bền vững!");
           });
@@ -1959,6 +2172,65 @@
             searchTimeout = setTimeout(() => UIManager.handleGlobalSearch(val), 300);
           };
 
+          UIManager.elements.folderFileSearchInput.oninput = (e) => {
+            const state = UIManager.getState();
+            state.folderSearchQuery = e.target.value;
+            state.currentPage = 1;
+            UIManager.renderPagedMedia();
+          };
+
+          /* BẮT SỰ KIỆN CHO NÚT BATCH DELETE & CHỌN NHIỀU */
+          UIManager.elements.btnToggleSelectMode.onclick = () => {
+            const state = UIManager.getState();
+            state.isSelectMode = !state.isSelectMode;
+            state.selectedFileIds.clear();
+            UIManager.updateBatchUI();
+            UIManager.renderPagedMedia();
+          };
+
+          UIManager.elements.btnSelectAll.onclick = () => {
+            const state = UIManager.getState();
+            let displayFiles = state.cachedFiles;
+            if (state.folderSearchQuery.trim()) {
+              const query = state.folderSearchQuery.toLowerCase();
+              displayFiles = state.cachedFiles.filter(f => f.name.toLowerCase().includes(query));
+            }
+            const start = (state.currentPage - 1) * state.itemsPerPage;
+            const end = start + state.itemsPerPage;
+            const pageItems = displayFiles.slice(start, end);
+
+            pageItems.forEach(f => state.selectedFileIds.add(f.id));
+            UIManager.updateBatchUI();
+            UIManager.renderPagedMedia();
+          };
+
+          UIManager.elements.btnDeselectAll.onclick = () => {
+            const state = UIManager.getState();
+            state.selectedFileIds.clear();
+            UIManager.updateBatchUI();
+            UIManager.renderPagedMedia();
+          };
+
+          UIManager.elements.btnDeleteSelected.onclick = async () => {
+            const state = UIManager.getState();
+            const count = state.selectedFileIds.size;
+            if (count === 0) return;
+
+            if (confirm(`Bạn có chắc chắn muốn xóa ${count} file kỷ niệm đã chọn?`)) {
+              UIManager.elements.statusEl.textContent = `⏳ Đang xóa ${count} file...`;
+              try {
+                await MediaManager.deleteBatch(Array.from(state.selectedFileIds));
+                state.selectedFileIds.clear();
+                UIManager.updateBatchUI();
+                await UIManager.loadMediaContent(state.activeFolderId);
+                UIManager.elements.statusEl.textContent = `✨ Đã xóa thành công ${count} file!`;
+              } catch (err) {
+                alert("Lỗi khi xóa file: " + err.message);
+              }
+              setTimeout(() => UIManager.elements.statusEl.textContent = "", 3000);
+            }
+          };
+
           UIManager.elements.newTagInput.onkeydown = async (e) => {
             if (e.key === "Enter" && e.target.value.trim()) {
               const tagVal = e.target.value.trim().replace(/^#/, "");
@@ -1990,7 +2262,12 @@
 
           document.getElementById("btn-next-page").onclick = () => {
             const state = UIManager.getState();
-            const totalPages = Math.ceil(state.cachedFiles.length / state.itemsPerPage);
+            let displayFiles = state.cachedFiles;
+            if (state.folderSearchQuery.trim()) {
+              const query = state.folderSearchQuery.toLowerCase();
+              displayFiles = state.cachedFiles.filter(f => f.name.toLowerCase().includes(query));
+            }
+            const totalPages = Math.ceil(displayFiles.length / state.itemsPerPage);
             if (state.currentPage < totalPages) {
               state.currentPage++;
               UIManager.renderPagedMedia();
@@ -2053,31 +2330,88 @@
             if (e.dataTransfer.files.length > 0) await handleUpload(e.dataTransfer.files);
           };
 
-          /* [TẦNG 4]: XỬ LÝ UPLOAD VỚI TRẠNG THÁI TỐI ƯU HÓA MEDIA REALTIME */
           async function handleUpload(files) {
             const state = UIManager.getState();
             let added = 0;
+            let replaced = 0;
             const total = files.length;
 
-            for (let i = 0; i < total; i++) {
-              const file = files[i];
-              if (state.activeFolderType === "image" && !file.type.startsWith("image/")) continue;
-              if (state.activeFolderType === "video" && !file.type.startsWith("video/")) continue;
+            DiskFileSystemManager.setPauseAutoSave(true);
 
-              UIManager.elements.statusEl.textContent = `⏳ Đang xử lý & tối ưu media (${i + 1}/${total}): ${escapeHTML(file.name)}...`;
-              await MediaManager.add(state.activeFolderId, file);
-              added++;
-            }
+            try {
+              for (let i = 0; i < total; i++) {
+                const file = files[i];
+                if (state.activeFolderType === "image" && !file.type.startsWith("image/")) continue;
+                if (state.activeFolderType === "video" && !file.type.startsWith("video/")) continue;
 
-            if (added > 0) {
-              UIManager.elements.statusEl.textContent = `✨ Đã tối ưu & thêm ${added} file thành công!`;
+                const currentFolderFiles = await MediaManager.getMetadataByFolder(state.activeFolderId);
+                const existingFile = currentFolderFiles.find(f => f.name === file.name);
+
+                if (existingFile) {
+                  if (confirm(`File "${file.name}" đã tồn tại trong thư mục này.\n\nBạn có muốn THAY THẾ bằng file mới không?`)) {
+                    UIManager.elements.statusEl.textContent = `⏳ Đang thay thế file (${i + 1}/${total}): ${escapeHTML(file.name)}...`;
+                    await MediaManager.replace(existingFile.id, state.activeFolderId, file);
+                    replaced++;
+                  }
+                } else {
+                  UIManager.elements.statusEl.textContent = `⏳ Đang xử lý & thêm file (${i + 1}/${total}): ${escapeHTML(file.name)}...`;
+                  await MediaManager.add(state.activeFolderId, file);
+                  added++;
+                }
+              }
+
+              if (added > 0 || replaced > 0) {
+                UIManager.elements.statusEl.textContent = `✨ Đã thêm ${added} file mới, thay thế ${replaced} file thành công!`;
+              } else {
+                UIManager.elements.statusEl.textContent = `⚠️ Không có thay đổi nào được thực hiện.`;
+              }
+            } catch (err) {
+              console.error("Lỗi upload file:", err);
+              if (err.name === "QuotaExceededError" || err.message?.includes("quota") || err.name === "UnknownError") {
+                alert("⚠️ Đã vượt quá dung lượng lưu trữ tối đa của trình duyệt (QuotaExceededError)! Vui lòng xóa bớt file kỷ niệm cũ hoặc xuất backup trước khi thêm tiếp.");
+              } else {
+                alert("❌ Lỗi trong quá trình lưu file: " + err.message);
+              }
+            } finally {
+              DiskFileSystemManager.setPauseAutoSave(false);
+              DiskFileSystemManager.saveToDisk(true);
               await UIManager.loadMediaContent(state.activeFolderId);
-              setTimeout(() => UIManager.elements.statusEl.textContent = "", 3000);
-            } else {
-              UIManager.elements.statusEl.textContent = `⚠️ Không có file phù hợp được thêm.`;
               setTimeout(() => UIManager.elements.statusEl.textContent = "", 3000);
             }
           }
+
+          document.getElementById("btn-viewer-replace").onclick = () => {
+            UIManager.elements.hiddenReplaceFileInput.click();
+          };
+
+          UIManager.elements.hiddenReplaceFileInput.onchange = async (e) => {
+            const state = UIManager.getState();
+            if (e.target.files.length > 0 && state.currentViewedFileId) {
+              const newFile = e.target.files[0];
+
+              if (state.activeFolderType === "image" && !newFile.type.startsWith("image/")) {
+                alert("Vui lòng chọn một file hình ảnh để thay thế!");
+                return;
+              }
+              if (state.activeFolderType === "video" && !newFile.type.startsWith("video/")) {
+                alert("Vui lòng chọn một file video để thay thế!");
+                return;
+              }
+
+              UIManager.elements.statusEl.textContent = `⏳ Đang xử lý thay thế file...`;
+              try {
+                await MediaManager.replace(state.currentViewedFileId, state.activeFolderId, newFile);
+                const updatedMeta = await MediaManager.getById(state.currentViewedFileId);
+                await UIManager.openMediaViewer(updatedMeta);
+                await UIManager.loadMediaContent(state.activeFolderId);
+                UIManager.elements.statusEl.textContent = `✨ Đã thay thế file thành công!`;
+              } catch (err) {
+                alert("Lỗi khi thay thế file: " + err.message);
+              }
+              setTimeout(() => UIManager.elements.statusEl.textContent = "", 3000);
+              e.target.value = "";
+            }
+          };
 
           document.getElementById("btn-viewer-close").onclick = UIManager.closeMediaViewer;
           document.getElementById("btn-viewer-delete").onclick = async () => {
