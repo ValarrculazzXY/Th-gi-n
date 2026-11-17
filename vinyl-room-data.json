@@ -1,0 +1,56 @@
+{
+  "app": "vinyl-room",
+  "version": 1,
+  "mode": "list",
+  "timestamp": 1791024830700,
+  "settings": {
+    "vinyl": "cyber",
+    "volume": 0.8,
+    "eq": "pop",
+    "shuffle": true,
+    "repeat": 0,
+    "last": "mus3sx5br3dd9e"
+  },
+  "tracks": [
+    {
+      "id": "mus14fb7heathy",
+      "name": "𝙑𝙊𝘾𝙀 𝙉𝘼 𝙈𝙄𝙍𝘼 𝙅𝙐𝙈𝙋𝙎𝙏𝙔𝙇𝙀 - 𝙎𝙭𝙞𝙡𝙬𝙞𝙭, 𝙃𝙬𝙪𝙣𝙜𝙞𝙞, 𝘿𝙅 𝙑𝙂𝙆1 (𝙎𝙪𝙥𝙚𝙧 𝙎𝙡𝙤𝙬𝙚𝙙) 𝙭 𝘾𝙝𝙞𝙨𝙖 - Lunar (720p, h264)",
+      "type": "video/mp4",
+      "size": 81661631,
+      "dur": 292.906621,
+      "added": 1791010019203
+    },
+    {
+      "id": "mus1hpbc8vo9h5",
+      "name": "!!!!!!【Playlist】1日の始まりを最高にする洋楽🌤️   作業用BGM  Chill  Cozy - 音灯。Onto. (720p, h264, youtube)",
+      "type": "video/mp4",
+      "size": 152352244,
+      "dur": 4361.585125,
+      "added": 1791010638696
+    },
+    {
+      "id": "mus3s5nr1fkgwp",
+      "name": "!!!!!!Serebro- Mi Mi Mi (Lyrics Video) - Music Terminal (720p, h264, youtube)",
+      "type": "video/mp4",
+      "size": 5320380,
+      "dur": 195.707891,
+      "added": 1791014485671
+    },
+    {
+      "id": "mus3sx5br3dd9e",
+      "name": "!!!!!!Cúc Tịnh Y tại Đêm hội Vương Giả Vinh Diệu 2023 (Cảnh quay khác) - Kim Ngân Okii (720p, h264, youtube)",
+      "type": "video/mp4",
+      "size": 77443081,
+      "dur": 277.697551,
+      "added": 1791014521295
+    },
+    {
+      "id": "mus3ur89k7d652",
+      "name": "!!!!!Nightcore - Stereo Hearts (Switching Vocals) - (Lyrics) - Sinnon Nightcore (720p, h264, youtube)",
+      "type": "video/mp4",
+      "size": 30156260,
+      "dur": 175.977506,
+      "added": 1791014606937
+    }
+  ]
+}
